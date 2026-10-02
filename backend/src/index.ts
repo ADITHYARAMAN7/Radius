@@ -13,6 +13,7 @@ import { requestContext } from './middleware/requestContext';
 import { aiRouter } from './routes/ai';
 import { eventsRouter } from './routes/events';
 import { metaRouter } from './routes/meta';
+import { recommendationsRouter } from './routes/recommendations';
 import { rsvpsRouter } from './routes/rsvps';
 import { uploadsRouter } from './routes/uploads';
 import { usersRouter } from './routes/users';
@@ -115,6 +116,9 @@ export function createApp(): express.Express {
   });
 
   app.use('/api', metaRouter);
+  // Recommendations must be mounted BEFORE the generic events router so that
+  // GET /api/events/recommended is matched here rather than treated as /:id.
+  app.use('/api/events', recommendationsRouter);
   app.use('/api/events', eventsRouter);
   app.use('/api/events', rsvpsRouter);
   app.use('/api/me', usersRouter);

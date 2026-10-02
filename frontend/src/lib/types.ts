@@ -164,3 +164,17 @@ export interface CategoryCount {
   category: Category;
   count: number;
 }
+
+/**
+ * An event enriched with a Local Relevance Score and human-readable reasons,
+ * returned by GET /api/events/recommended.
+ *
+ * This is NOT a prediction model result — it is a configurable heuristic ranking
+ * based on distance, category interest, timing, freshness, and engagement.
+ */
+export interface RecommendedEvent extends EventRecord {
+  /** 0–100 integer relevance score. */
+  relevanceScore: number;
+  /** 2–4 short reasons explaining why this event was recommended. */
+  relevanceReasons: string[];
+}

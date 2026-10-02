@@ -6,6 +6,7 @@ import { Badge, Card } from '@/components/ui/Primitives';
 import { EventCard } from '@/components/events/EventCard';
 import { CategoryIcon } from '@/components/events/CategoryBadge';
 import { NearbyEvents } from '@/components/events/NearbyEvents';
+import { RecommendedSection } from '@/components/events/RecommendedSection';
 import { EmptyState, EventGridSkeleton, ErrorState } from '@/components/common/States';
 import { useEvents } from '@/hooks/useEvents';
 import { useRsvp } from '@/hooks/useRsvp';
@@ -284,6 +285,8 @@ export default function Home() {
         exists to answer, so it should not be below three other sections.
       */}
       <NearbyEvents />
+
+      <RecommendedSection />
 
       <EventSection
         title="Happening this week"

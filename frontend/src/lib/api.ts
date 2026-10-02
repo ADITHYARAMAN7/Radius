@@ -9,6 +9,7 @@ import type {
   EventRecord,
   InsightsPayload,
   Paginated,
+  RecommendedEvent,
   RsvpResult,
   SearchIntent,
   UserProfile,
@@ -231,5 +232,29 @@ export const api = {
       formData: form,
       auth: true,
     });
+  },
+
+  /**
+   * Fetch upcoming active events ranked by Local Relevance Score.
+   * Auth is optional — signed-in users get isAttending/isOwner enrichment.
+   *
+   * This is a heuristic ranking (not an ML prediction) based on:
+   * distance, category interests, time-until-event, freshness, and engagement.
+   */
+  recommended: (params: {
+    lat?: number;
+    lng?: number;
+    interests?: string[];
+    page?: number;
+    pageSize?: number;
+  } = {}) => {
+    const query = new URLSearchParams();
+    if (params.lat != null && Number.isFinite(params.lat)) query.set('lat', String(params.lat));
+    if (params.lng != null && Number.isFinite(params.lng)) query.set('lng', String(params.lng));
+    if (params.interests && params.interests.length > 0) query.set('interests', params.interests.join(','));
+    if (params.page && params.page > 1) query.set('page', String(params.page));
+    if (params.pageSize) query.set('pageSize', String(params.pageSize));
+    const qs = query.toString();
+    return request<Paginated<RecommendedEvent>>(`/events/recommended${qs ? `?${qs}` : ''}`);
   },
 };
