@@ -25,6 +25,7 @@
 
 import { FieldValue, Timestamp, getDb, initFirebase } from '../backend/src/config/firebase';
 import { env } from '../backend/src/config/env';
+import { placeKey } from '../backend/src/utils/search';
 
 // Say out loud where the data is going, and never let a "demo-" (emulator-only) project
 // fall through to real Google Cloud credentials.
@@ -211,8 +212,8 @@ const UPCOMING_EVENTS: SeedEventDefinition[] = [
     endTime: '19:00',
     timeFormatted: '5:45 PM - 7:00 PM',
     location: 'Terrace, Anand Residency',
-    address: 'Anand Residency, DB Road, R S Puram, Coimbatore 641002',
-    neighborhood: 'R S Puram',
+    address: 'Anand Residency, DB Road, R.S. Puram, Coimbatore 641002',
+    neighborhood: 'R.S. Puram',
     city: 'Coimbatore',
     latitude: 11.0041,
     longitude: 76.9503,
@@ -236,8 +237,8 @@ const UPCOMING_EVENTS: SeedEventDefinition[] = [
     endTime: '20:45',
     timeFormatted: '6:30 PM - 8:45 PM',
     location: 'Kuruvai Community Hall',
-    address: '12 Thadagam Road, R S Puram, Coimbatore 641002',
-    neighborhood: 'R S Puram',
+    address: '12 Thadagam Road, R.S. Puram, Coimbatore 641002',
+    neighborhood: 'R.S. Puram',
     city: 'Coimbatore',
     latitude: 11.0071,
     longitude: 76.9492,
@@ -809,8 +810,8 @@ const EXPIRED_EVENTS: SeedEventDefinition[] = [
     endTime: '20:15',
     timeFormatted: '6:00 PM - 8:15 PM',
     location: 'Kuruvai Heritage Hall',
-    address: '12 Thadagam Road, R S Puram, Coimbatore 641002',
-    neighborhood: 'R S Puram',
+    address: '12 Thadagam Road, R.S. Puram, Coimbatore 641002',
+    neighborhood: 'R.S. Puram',
     city: 'Coimbatore',
     latitude: 11.0071,
     longitude: 76.9492,
@@ -1059,8 +1060,8 @@ async function seedEvents(): Promise<void> {
         creatorPhotoURL: null,
 
         // Search indexes
-        neighborhoodLower: normalise(item.neighborhood),
-        cityLower: normalise(item.city),
+        neighborhoodLower: placeKey(item.neighborhood),
+        cityLower: placeKey(item.city),
         searchKeywords: buildKeywords([
           item.title,
           item.summary,

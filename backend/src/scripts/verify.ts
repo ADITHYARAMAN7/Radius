@@ -25,7 +25,8 @@ import {
 } from '../services/eventService';
 import { joinEvent, leaveEvent } from '../services/rsvpService';
 import { ensureProfile, updateProfile } from '../services/userService';
-import { getInsights } from '../services/statsService';
+import { getInsights, getNeighborhoodOptions } from '../services/statsService';
+import { placeKey } from '../utils/search';
 import { normalizeExtraction, nowInTimezone, resolveTimezone } from '../services/aiService';
 import { isOwnedImagePath } from '../services/storageService';
 import { AppError } from '../middleware/error';
@@ -573,6 +574,33 @@ async function main(): Promise<void> {
       insights.byCategory.reduce((sum, row) => sum + row.events, 0) <= insights.totals.events,
     );
     check('a generation timestamp is included', Boolean(insights.generatedAt));
+  }
+
+  console.log('\n=== Neighbourhood matching (placeKey) ===');
+  {
+    check('dots, spaces and case are ignored', placeKey('R.S. Puram') === placeKey('R S Puram') && placeKey('RS puram') === 'rspuram');
+    check('hyphens and accents are ignored', placeKey('Saibaba-Colony') === placeKey('Saibaba Colony') && placeKey('Café') === 'cafe');
+    check('different places stay different', placeKey('Race Course') !== placeKey('Ram Nagar'));
+
+    const dotted = await createEvent(
+      eventInputSchema.parse({ ...BASE_INPUT, title: 'Verification run: R.S. Puram spelling', neighborhood: 'R.S. Puram' }),
+      ORGANISER,
+    );
+    const bySpacedSpelling = await listEvents({ neighborhood: 'R S Puram', pageSize: 60 });
+    check('filter "R S Puram" finds an event stored as "R.S. Puram"', bySpacedSpelling.items.some((e) => e.id === dotted.id));
+
+    const withCategory = await listEvents({ neighborhood: 'rs puram', category: 'Sports', pageSize: 60 });
+    check('the in-memory neighbourhood filter matches too', withCategory.items.some((e) => e.id === dotted.id));
+
+    const byCity = await listEvents({ city: ' COIMBATORE ', pageSize: 60 });
+    check('city filter ignores case and spaces', byCity.items.some((e) => e.id === dotted.id));
+
+    const options = await getNeighborhoodOptions();
+    check(
+      'neighbourhood suggestions list each place once',
+      options.filter((o) => placeKey(o.name) === 'rspuram').length === 1 &&
+        options.filter((o) => placeKey(o.name) === 'peelamedu').length === 1,
+    );
   }
 
   console.log('\n=== Snap-a-Poster normalisation (no Gemini call) ===');

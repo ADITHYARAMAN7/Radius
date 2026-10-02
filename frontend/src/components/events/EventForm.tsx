@@ -26,6 +26,8 @@ import {
   type ExtractionResult,
 } from '@/lib/types';
 import { cn, todayAsInputValue } from '@/lib/utils';
+import { isMapsConfigured } from '@/lib/maps';
+import { PlaceAutocomplete, type PickedPlace } from './PlaceAutocomplete';
 import { SnapPoster } from './SnapPoster';
 
 interface FormState {
@@ -161,12 +163,13 @@ const SNAP_FIELD_LABELS: Record<ExtractField, string> = {
   city: 'City',
 };
 
-/** How a field got its value: read from the poster, or suggested by us. */
-type AiMark = 'ai' | 'suggested';
+/** How a field got its value: read from the poster, suggested by us, or from a Google Maps pick. */
+type AiMark = 'ai' | 'suggested' | 'maps';
 
 const AI_HINTS: Record<AiMark, string> = {
   ai: 'Filled by AI, please check.',
   suggested: 'Suggested end time (start + 2 hours), please check.',
+  maps: 'Filled from Google Maps, please check.',
 };
 
 /** Highlights a field the AI filled until the user edits it. */
@@ -536,6 +539,12 @@ export function EventForm({
     null,
   );
 
+  /**
+   * Google Places autocomplete for the address when a Maps key is configured. If the
+   * script fails to load, this flips off and the form is exactly the manual one again.
+   */
+  const [placesMode, setPlacesMode] = useState(isMapsConfigured);
+
   const isEdit = mode === 'edit';
 
   useEffect(() => {
@@ -629,6 +638,44 @@ export function EventForm({
     // Never silently wipe what the user typed: ask first.
     if (conflicts.length > 0) setPendingSnap({ result, conflicts });
     else applySnap(result, false);
+  };
+
+  /**
+   * A picked suggestion is the most reliable source for address, area and coordinates,
+   * so those are replaced. The venue name is only filled when empty — a street address
+   * pick would otherwise overwrite "VOC Park" with "12 Cross Cut Road".
+   */
+  const applyPlace = (place: PickedPlace) => {
+    const next: FormState = {
+      ...form,
+      address: place.address || form.address,
+      neighborhood: place.neighborhood || form.neighborhood,
+      city: place.city || form.city,
+      latitude: place.latitude === null ? '' : place.latitude.toFixed(6),
+      longitude: place.longitude === null ? '' : place.longitude.toFixed(6),
+    };
+    const marks: Partial<Record<keyof FormState, AiMark>> = {};
+    if (place.address) marks.address = 'maps';
+    if (place.neighborhood) marks.neighborhood = 'maps';
+    if (place.city) marks.city = 'maps';
+
+    if (place.name && !form.location.trim()) {
+      next.location = place.name;
+      marks.location = 'maps';
+    }
+
+    setForm(next);
+    setAiMarks((current) => ({ ...current, ...marks }));
+    setErrors((current) => ({
+      ...current,
+      address: undefined,
+      location: next.location ? undefined : current.location,
+      neighborhood: undefined,
+      city: undefined,
+      latitude: undefined,
+      longitude: undefined,
+    }));
+    setSubmitError(null);
   };
 
   /** Hint and highlight for a field the AI filled; the field's own hint otherwise. */
@@ -986,16 +1033,35 @@ export function EventForm({
           placeholder="VOC Park Grounds"
         />
 
-        <Input
-          id="field-address"
-          label="Street address"
-          required
-          value={form.address}
-          onChange={(changeEvent) => set('address', changeEvent.target.value)}
-          error={errors.address}
-          {...aiProps('address')}
-          placeholder="VOC Park, Dr Nanjappa Road, Gandhipuram, Coimbatore 641018"
-        />
+        {placesMode ? (
+          <PlaceAutocomplete
+            id="field-address"
+            label="Street address"
+            required
+            initialValue={form.address}
+            error={errors.address}
+            hint={
+              aiMarks.address
+                ? AI_HINTS[aiMarks.address]
+                : 'Start typing and pick a suggestion: it fills the neighbourhood, city and map pin for you.'
+            }
+            highlight={Boolean(aiMarks.address)}
+            onPick={applyPlace}
+            onType={(text) => set('address', text)}
+            onUnavailable={() => setPlacesMode(false)}
+          />
+        ) : (
+          <Input
+            id="field-address"
+            label="Street address"
+            required
+            value={form.address}
+            onChange={(changeEvent) => set('address', changeEvent.target.value)}
+            error={errors.address}
+            {...aiProps('address')}
+            placeholder="VOC Park, Dr Nanjappa Road, Gandhipuram, Coimbatore 641018"
+          />
+        )}
 
         <div className="grid gap-5 sm:grid-cols-2">
           <Input
@@ -1021,6 +1087,26 @@ export function EventForm({
           />
         </div>
 
+        {placesMode ? (
+          // Coordinates come from the picked suggestion; showing them lets the user see
+          // (and drop) a pin that no longer matches what they typed.
+          form.latitude && form.longitude ? (
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
+              <span>
+                Pinned on the map at {form.latitude}, {form.longitude}.
+              </span>
+              <button
+                type="button"
+                onClick={() => setForm((current) => ({ ...current, latitude: '', longitude: '' }))}
+                className="font-semibold text-brand underline-offset-2 hover:underline"
+              >
+                Remove pin
+              </button>
+            </p>
+          ) : (
+            <p className="text-xs text-ink-muted">No map pin yet: pick an address suggestion to add one.</p>
+          )
+        ) : (
         <div className="grid gap-5 sm:grid-cols-2">
           <Input
             id="field-latitude"
@@ -1044,6 +1130,7 @@ export function EventForm({
             inputMode="decimal"
           />
         </div>
+        )}
       </Card>
 
       {/* ------------------------------------------------------------ image */}

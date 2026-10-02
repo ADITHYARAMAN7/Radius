@@ -12,7 +12,7 @@ import type { EventInput, EventUpdateInput } from '../middleware/validate';
 import type { AuthUser } from '../middleware/auth';
 import type { Category, EventQueryOptions, EventRecord, Paginated } from '../types';
 import { combineDateTime, distanceKm, resolveDateWindow, toIso } from '../utils/dates';
-import { buildKeywords, normalise, relevanceScore } from '../utils/search';
+import { buildKeywords, normalise, placeKey, relevanceScore } from '../utils/search';
 import { deleteImage, isOwnedImagePath } from './storageService';
 
 const EVENTS = 'events';
@@ -89,11 +89,11 @@ interface SearchableFields {
   city: string;
 }
 
-/** Lowercase mirrors exist so Firestore equality filters behave case-insensitively. */
+/** Matching-key mirrors (see placeKey) so Firestore equality filters ignore case, dots and spaces. */
 function buildSearchFields(input: SearchableFields) {
   return {
-    neighborhoodLower: normalise(input.neighborhood),
-    cityLower: normalise(input.city),
+    neighborhoodLower: placeKey(input.neighborhood),
+    cityLower: placeKey(input.city),
     searchKeywords: buildKeywords([
       input.title,
       input.summary,
@@ -410,9 +410,9 @@ export async function listEvents(
   if (options.category) {
     query = query.where('category', '==', options.category);
   } else if (options.neighborhood) {
-    query = query.where('neighborhoodLower', '==', normalise(options.neighborhood));
+    query = query.where('neighborhoodLower', '==', placeKey(options.neighborhood));
   } else if (options.city) {
-    query = query.where('cityLower', '==', normalise(options.city));
+    query = query.where('cityLower', '==', placeKey(options.city));
   }
 
   if (!isPast && !isAll) {
@@ -439,12 +439,12 @@ export async function listEvents(
 
   // Equality filters that were not pushed down to Firestore.
   if (options.category && options.neighborhood) {
-    const target = normalise(options.neighborhood);
-    records = records.filter((e) => normalise(e.neighborhood) === target);
+    const target = placeKey(options.neighborhood);
+    records = records.filter((e) => placeKey(e.neighborhood) === target);
   }
   if ((options.category || options.neighborhood) && options.city) {
-    const target = normalise(options.city);
-    records = records.filter((e) => normalise(e.city) === target);
+    const target = placeKey(options.city);
+    records = records.filter((e) => placeKey(e.city) === target);
   }
 
   if (options.lat !== undefined && options.lng !== undefined && options.radiusKm) {

@@ -207,6 +207,9 @@ export const api = {
 
   categories: () => request<{ categories: CategoryCount[] }>('/categories'),
 
+  /** Neighbourhoods with upcoming events, for the filter's suggestions. */
+  neighborhoods: () => request<{ neighborhoods: Array<{ name: string; count: number }> }>('/neighborhoods'),
+
   insights: () => request<InsightsPayload>('/insights'),
 
   aiStatus: () => request<{ available: boolean }>('/ai/status'),

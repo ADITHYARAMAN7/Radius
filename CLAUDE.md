@@ -228,3 +228,17 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   **For later:** the existing "Improve with AI" and AI search don't retry/fall back yet, so they can still fail
   while Gemini is overloaded.
   Next: feature 3 (Places Autocomplete).
+- Oct 2: **Feature 3 done — Places Autocomplete** (code complete; live Google test needs the Maps key tonight).
+  `PlaceAutocompleteElement` (Places API New) on the address field in EventForm (create + edit), India-only,
+  biased to a 30 km circle around Coimbatore; one `fetchFields` per pick. Fills address, neighbourhood, city,
+  lat/lng (venue only if empty); lat/lng inputs hidden in that mode with a "Pinned… Remove pin" line.
+  Neighbourhood = sublocality_level_1 → sublocality → neighborhood → locality; if it came from locality,
+  city = administrative_area_level_2 (so Ettimadai → Ettimadai / Coimbatore); same-as-city → left empty.
+  Single shared Maps loader in `frontend/src/lib/maps.ts` (EventMap uses it). No key or script failure →
+  form identical to before. Place ID **not stored** (would need a data-model change; nothing uses it yet).
+  New `placeKey()` (letters+digits only) for `neighborhoodLower`/`cityLower` + filters, so "R.S. Puram" =
+  "R S Puram" = "RS Puram"; seed uses it and now spells "R.S. Puram". `GET /api/neighborhoods` feeds a
+  `<datalist>` of suggestions on the (still free-text) neighbourhood filter. verify 123/123.
+  **Deploy note:** deploy this branch, or run `npm run seed:clear` after deploying, so stored keys use placeKey.
+  **Tonight with the key:** pick each seed neighbourhood in the autocomplete and align any spelling that differs.
+  Next: feature 4 (Popular badge + Amrita events).

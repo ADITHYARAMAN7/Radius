@@ -5,7 +5,7 @@ import { getDb } from '../config/firebase';
 import { logger } from '../config/logger';
 import { AppError, asyncHandler } from '../middleware/error';
 import { expirePastEvents } from '../services/eventService';
-import { getCategoryCounts, getInsights } from '../services/statsService';
+import { getCategoryCounts, getInsights, getNeighborhoodOptions } from '../services/statsService';
 import { CATEGORIES } from '../types';
 
 export const metaRouter = Router();
@@ -61,6 +61,12 @@ metaRouter.get(
 metaRouter.get('/categories', asyncHandler(async (_req, res) => {
   const counts = await getCategoryCounts();
   res.json({ categories: counts });
+}));
+
+/** Suggestions for the neighbourhood filter: places with upcoming events. */
+metaRouter.get('/neighborhoods', asyncHandler(async (_req, res) => {
+  const neighborhoods = await getNeighborhoodOptions();
+  res.json({ neighborhoods });
 }));
 
 metaRouter.get('/categories/list', (_req, res) => {
