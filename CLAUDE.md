@@ -94,10 +94,9 @@ Adhi's Flask version is a prototype; we only port ideas from it (see §6).
 - From suhas-dev: Snap-a-Poster (idea by Adhi; Gemini only), Places autocomplete (with a Maps key) feeding
   the draggable pin, spelling-proof neighbourhood filter + suggestions, Popular badge, Amrita/Ettimadai seed
   events, month calendar view, installable PWA, Gemini fallback model, deploy fixes ($BUILD_ID, TZ).
-- **Open security item (needs Kanish's OK):** `checkInCode` lives on the event document and
-  `firestore.rules` allows public reads of events, so anyone could read codes straight from Firestore. The
-  frontend never reads Firestore directly, so `allow read: if false;` on `/events` (or moving the code to a
-  private subcollection) closes it without breaking anything.
+- **Security (fixed Oct 3, Kanish OK):** `firestore.rules` now denies client reads of `/events`, so check-in
+  codes can't be read straight from Firestore. The board stays public through the API, which only sends the
+  code to the organiser.
 - Docs updated to match: README, `docs/roadmap.md`, `docs/presentation-slides.md`, `docs/demo-script.md`.
   **Not yet reviewed:** `docs/cognizant-hackathon-report.md`, `docs/architecture*.md` may still contain old
   claims (e.g. Gemini 1.5) — check before submitting them.
@@ -398,5 +397,8 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   `frontend/.env.production`; ~5 min). Gotchas: Git Bash mangles paths like `/api/health` in gcloud args
   (use PowerShell); `gcloud alpha` isn't installed (use REST).
   **Still to do:** Suhas tests real "Continue with Google" on the live URL (can't be automated); re-seed the
-  real DB on the morning of Oct 6 and set `--min-instances=1` for the demo; check-in-code Firestore rule
-  (Kanish); merge PR #3; slides / video / report; monitoring screenshots for the slides.
+  real DB on the morning of Oct 6 and set `--min-instances=1` for the demo; merge PR #3; slides / video / report; monitoring screenshots for the slides.
+- Oct 3 (night): **Check-in code leak closed** (Kanish OK). Confirmed live first: the public web key could read
+  every event's `checkInCode` via the Firestore REST API. `firestore.rules`: `/events` → `allow read: if false`
+  (nothing in the frontend reads Firestore; the API uses the Admin SDK). Deployed to `nearby-events-510418`;
+  re-checked: direct read → PERMISSION_DENIED, site still lists 35 events, public API responses carry no codes.

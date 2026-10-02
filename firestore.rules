@@ -9,7 +9,8 @@ rules_version = '2';
  * directly — by this app in future, or by someone who extracted the public web config —
  * these rules are what stop it writing anything it should not.
  *
- * The posture is: reading the board is public, every write is either denied outright or
+ * The posture is: the board is public through the API (event documents themselves are not
+ * client-readable, they hold check-in codes), every write is either denied outright or
  * restricted to the owner of the data, and the fields that must not be client-controlled
  * (rsvpCount, creatorId, status) can never be set from a client.
  *
@@ -73,8 +74,12 @@ service cloud.firestore {
     /* ------------------------------------------------------------ events */
 
     match /events/{eventId} {
-      // The board is public — no account needed to browse or to open a shared link.
-      allow read: if true;
+      /**
+       * No direct client reads. The board is still public, but through the API, which never
+       * sends checkInCode to anyone but the organiser. A direct read would hand out every
+       * event's check-in code to anyone holding the public web config.
+       */
+      allow read: if false;
 
       /**
        * Creation requires that the claimed organiser is the caller, and that the
