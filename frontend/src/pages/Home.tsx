@@ -7,6 +7,7 @@ import { EventCard } from '@/components/events/EventCard';
 import { CategoryIcon } from '@/components/events/CategoryBadge';
 import { NearbyEvents } from '@/components/events/NearbyEvents';
 import { RecommendedSection } from '@/components/events/RecommendedSection';
+import { TrendingSection } from '@/components/events/TrendingSection';
 import { EmptyState, EventGridSkeleton, ErrorState } from '@/components/common/States';
 import { useEvents } from '@/hooks/useEvents';
 import { useRsvp } from '@/hooks/useRsvp';
@@ -287,6 +288,8 @@ export default function Home() {
       <NearbyEvents />
 
       <RecommendedSection />
+
+      <TrendingSection />
 
       <EventSection
         title="Happening this week"

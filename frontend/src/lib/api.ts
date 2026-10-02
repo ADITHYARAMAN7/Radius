@@ -12,6 +12,7 @@ import type {
   RecommendedEvent,
   RsvpResult,
   SearchIntent,
+  TrendingEvent,
   UserProfile,
 } from './types';
 
@@ -256,5 +257,26 @@ export const api = {
     if (params.pageSize) query.set('pageSize', String(params.pageSize));
     const qs = query.toString();
     return request<Paginated<RecommendedEvent>>(`/events/recommended${qs ? `?${qs}` : ''}`);
+  },
+
+  /**
+   * Fetch upcoming active events ranked by community momentum (Pulse Score).
+   * Measures RECENT engagement growth (e.g. RSVPs in the last 7 days) rather than lifetime totals.
+   */
+  trending: (params: {
+    page?: number;
+    pageSize?: number;
+    category?: string;
+    neighborhood?: string;
+    city?: string;
+  } = {}) => {
+    const query = new URLSearchParams();
+    if (params.page && params.page > 1) query.set('page', String(params.page));
+    if (params.pageSize) query.set('pageSize', String(params.pageSize));
+    if (params.category) query.set('category', params.category);
+    if (params.neighborhood) query.set('neighborhood', params.neighborhood);
+    if (params.city) query.set('city', params.city);
+    const qs = query.toString();
+    return request<Paginated<TrendingEvent>>(`/events/trending${qs ? `?${qs}` : ''}`);
   },
 };

@@ -178,3 +178,25 @@ export interface RecommendedEvent extends EventRecord {
   /** 2–4 short reasons explaining why this event was recommended. */
   relevanceReasons: string[];
 }
+
+/**
+ * Pulse status for community momentum classification.
+ */
+export type PulseStatus = 'NORMAL' | 'GROWING' | 'TRENDING';
+
+/**
+ * An event enriched with a community momentum (Pulse) score,
+ * returned by GET /api/events/trending.
+ *
+ * Pulse measures RECENT engagement growth, not lifetime popularity.
+ * An event with 10 RSVPs this week is more "trending" than one with
+ * 40 RSVPs accumulated over 3 months.
+ */
+export interface TrendingEvent extends EventRecord {
+  /** 0–100 integer pulse score. */
+  pulseScore: number;
+  /** Community momentum classification. */
+  pulseStatus: PulseStatus;
+  /** 1–3 human-readable reasons explaining the momentum. */
+  pulseReasons: string[];
+}
