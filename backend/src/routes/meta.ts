@@ -2,9 +2,14 @@ import crypto from 'node:crypto';
 import { Router } from 'express';
 import { capabilities, env } from '../config/env';
 import { getDb } from '../config/firebase';
+import { localStackHealth } from '../config/localStack';
 import { logger } from '../config/logger';
+import { requireAuth } from '../middleware/auth';
 import { AppError, asyncHandler } from '../middleware/error';
+import { geocodeSchema } from '../middleware/validate';
+import { geocode } from '../services/geocodeService';
 import { expirePastEvents } from '../services/eventService';
+import { POINTS, getLeaderboard } from '../services/gamificationService';
 import { getCategoryCounts, getInsights, getNeighborhoodOptions } from '../services/statsService';
 import { CATEGORIES } from '../types';
 
@@ -18,14 +23,21 @@ metaRouter.get(
   '/health',
   asyncHandler(async (_req, res) => {
     let firestore = 'unknown';
-    try {
-      await getDb().collection('events').limit(1).get();
-      firestore = 'connected';
-    } catch (error) {
-      firestore = 'unreachable';
-      logger.error('Health check could not reach Firestore', {
-        reason: (error as { message?: string }).message,
-      });
+    const localStack = await localStackHealth();
+
+    if (localStack === 'starting' || localStack === 'down') {
+      // Asking Firestore would hang until the emulator answers, so report what is known.
+      firestore = localStack === 'starting' ? 'emulator starting' : 'emulator not running';
+    } else {
+      try {
+        await getDb().collection('events').limit(1).get();
+        firestore = 'connected';
+      } catch (error) {
+        firestore = 'unreachable';
+        logger.error('Health check could not reach Firestore', {
+          reason: (error as { message?: string }).message,
+        });
+      }
     }
 
     const healthy = firestore === 'connected';
@@ -41,8 +53,13 @@ metaRouter.get(
         }
       : {
           firestore,
-          cloudStorage: capabilities.storage ? 'configured' : 'not configured',
-          gemini: capabilities.ai ? `configured (${env.aiProvider})` : 'not configured',
+          cloudStorage: capabilities.localStorage
+            ? 'local disk (development)'
+            : capabilities.storage
+              ? 'configured'
+              : 'not configured',
+          gemini: capabilities.ai ? `configured (${env.aiProvider})` : 'built-in assistant (no Gemini key)',
+          mode: env.localMode ? 'local emulators' : 'google cloud',
           scheduledExpiry: capabilities.maintenance ? 'configured' : 'not configured',
         };
 
@@ -78,6 +95,29 @@ metaRouter.get(
   asyncHandler(async (_req, res) => {
     const insights = await getInsights();
     res.json(insights);
+  }),
+);
+
+/**
+ * POST /api/geocode — "Find from address" on the event form.
+ * Signed in only: every call is a request to a third-party service on the project's behalf.
+ */
+metaRouter.post(
+  '/geocode',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const input = geocodeSchema.parse(req.body);
+    const result = await geocode(input);
+    res.json({ result });
+  }),
+);
+
+/** GET /api/community/leaderboard — the most active neighbours, and how points are earned. */
+metaRouter.get(
+  '/community/leaderboard',
+  asyncHandler(async (_req, res) => {
+    const leaders = await getLeaderboard(10);
+    res.json({ leaders, points: POINTS });
   }),
 );
 

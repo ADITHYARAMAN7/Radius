@@ -2,6 +2,7 @@ import { FieldValue, getDb, type DocumentData } from '../config/firebase';
 import { logger } from '../config/logger';
 import { AppError } from '../middleware/error';
 import type { AuthUser } from '../middleware/auth';
+import { pointsDelta } from './gamificationService';
 
 const EVENTS = 'events';
 const RSVPS = 'rsvps';
@@ -26,7 +27,8 @@ export async function joinEvent(eventId: string, user: AuthUser): Promise<RsvpRe
   const db = getDb();
   const eventRef = db.collection(EVENTS).doc(eventId);
   const rsvpRef = eventRef.collection(RSVPS).doc(user.uid);
-  const mirrorRef = db.collection('users').doc(user.uid).collection(ATTENDING).doc(eventId);
+  const userRef = db.collection('users').doc(user.uid);
+  const mirrorRef = userRef.collection(ATTENDING).doc(eventId);
 
   const result = await db.runTransaction(async (tx) => {
     const [eventSnap, rsvpSnap] = await Promise.all([tx.get(eventRef), tx.get(rsvpRef)]);
@@ -69,6 +71,11 @@ export async function joinEvent(eventId: string, user: AuthUser): Promise<RsvpRe
 
     tx.update(eventRef, { rsvpCount: FieldValue.increment(1) });
 
+    // Organisers do not earn RSVP points on their own events — hosting already pays.
+    if (event.creatorId !== user.uid) {
+      tx.set(userRef, pointsDelta('rsvp', 1, String(event.category ?? 'Other')), { merge: true });
+    }
+
     return { attending: true, rsvpCount: currentCount + 1 };
   });
 
@@ -81,7 +88,8 @@ export async function leaveEvent(eventId: string, user: AuthUser): Promise<RsvpR
   const db = getDb();
   const eventRef = db.collection(EVENTS).doc(eventId);
   const rsvpRef = eventRef.collection(RSVPS).doc(user.uid);
-  const mirrorRef = db.collection('users').doc(user.uid).collection(ATTENDING).doc(eventId);
+  const userRef = db.collection('users').doc(user.uid);
+  const mirrorRef = userRef.collection(ATTENDING).doc(eventId);
 
   const result = await db.runTransaction(async (tx) => {
     const [eventSnap, rsvpSnap] = await Promise.all([tx.get(eventRef), tx.get(rsvpRef)]);
@@ -95,9 +103,20 @@ export async function leaveEvent(eventId: string, user: AuthUser): Promise<RsvpR
       return { attending: false, rsvpCount: currentCount };
     }
 
+    const rsvp = rsvpSnap.data() as DocumentData;
+
+    // Someone who has checked in was there; that record should not be erasable afterwards.
+    if (rsvp.checkedInAt) {
+      throw AppError.conflict('You have already checked in at this event, so your RSVP stays.');
+    }
+
     tx.delete(rsvpRef);
     tx.delete(mirrorRef);
     tx.update(eventRef, { rsvpCount: FieldValue.increment(currentCount > 0 ? -1 : 0) });
+
+    if (event.creatorId !== user.uid) {
+      tx.set(userRef, pointsDelta('rsvp', -1, String(event.category ?? 'Other')), { merge: true });
+    }
 
     return { attending: false, rsvpCount: Math.max(0, currentCount - 1) };
   });

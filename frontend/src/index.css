@@ -201,3 +201,39 @@
     overflow: hidden;
   }
 }
+
+/* ------------------------------------------------------------ Leaflet map */
+
+/* The pin is an inline SVG; Leaflet's default white box around div icons is not wanted. */
+.nearby-pin {
+  background: none;
+  border: 0;
+}
+
+.leaflet-container {
+  font-family: inherit;
+}
+
+/*
+ * OpenStreetMap only publishes light tiles. Inverting and rotating the hue back gives a
+ * dark map with roads and water still in recognisable colours — applied to the tile pane
+ * only, so the category-coloured pins are untouched.
+ */
+[data-theme='dark'] .nearby-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.7);
+}
+
+[data-theme='dark'] .nearby-map .leaflet-container {
+  background: hsl(var(--surface-sunken));
+}
+
+[data-theme='dark'] .nearby-map .leaflet-bar a,
+[data-theme='dark'] .nearby-map .leaflet-control-attribution {
+  background: hsl(var(--surface) / 0.92);
+  color: hsl(var(--ink-soft));
+  border-color: hsl(var(--border));
+}
+
+[data-theme='dark'] .nearby-map .leaflet-control-attribution a {
+  color: hsl(var(--brand));
+}

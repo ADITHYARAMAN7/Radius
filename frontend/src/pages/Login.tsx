@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, LogIn, Mail, MapPin } from 'lucide-react';
+import { AlertTriangle, FlaskConical, LogIn, Mail, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
 import { Card } from '@/components/ui/Primitives';
@@ -101,7 +101,7 @@ export function AuthNotConfigured() {
 }
 
 export default function Login() {
-  const { signIn, signInGoogle, user, initialising, configured } = useAuth();
+  const { signIn, signInGoogle, signInDemo, localMode, user, initialising, configured } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const toast = useToast();
@@ -109,7 +109,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState<'email' | 'google' | null>(null);
+  const [busy, setBusy] = useState<'email' | 'google' | 'demo' | null>(null);
 
   // Where to land after signing in — set by ProtectedRoute and the RSVP flow.
   const next = safeRedirectPath(searchParams.get('next'));
@@ -149,6 +149,20 @@ export default function Login() {
     try {
       await signInGoogle();
       toast.success('Signed in with Google');
+      navigate(next, { replace: true });
+    } catch (caught) {
+      setError((caught as Error).message);
+      setBusy(null);
+    }
+  };
+
+  const onDemo = async () => {
+    setError('');
+    setBusy('demo');
+
+    try {
+      await signInDemo();
+      toast.success('Signed in', 'You are using the local demo account.');
       navigate(next, { replace: true });
     } catch (caught) {
       setError((caught as Error).message);
@@ -224,6 +238,30 @@ export default function Login() {
         <GoogleMark />
         Continue with Google
       </Button>
+
+      {/* Only ever rendered against the local emulator, never real Firebase Auth. */}
+      {localMode && (
+        <div className="mt-5 rounded-xl bg-brand-soft p-4 ring-1 ring-brand/20">
+          <p className="flex items-center gap-2 text-sm font-bold text-brand-ink">
+            <FlaskConical className="h-4 w-4" aria-hidden="true" />
+            Running in local mode
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-brand-ink/85">
+            Accounts are kept in the Firebase emulator on this machine, so any email and password
+            will do — or skip the form entirely.
+          </p>
+          <Button
+            variant="primary"
+            full
+            className="mt-3"
+            onClick={onDemo}
+            loading={busy === 'demo'}
+            loadingLabel="Signing in"
+          >
+            Continue with the demo account
+          </Button>
+        </div>
+      )}
     </AuthShell>
   );
 }

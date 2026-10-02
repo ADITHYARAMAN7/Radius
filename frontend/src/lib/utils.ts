@@ -83,6 +83,34 @@ export function formatRelative(iso: string): string {
   return future ? `in ${phrase}` : `${phrase} ago`;
 }
 
+/** "just now", "5 minutes ago", "3 days ago" — for things that already happened. */
+export function formatTimeAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '';
+
+  const minutes = Math.round((Date.now() - then) / 60_000);
+  if (minutes < 1) return 'just now';
+
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? '' : 's'} ago`;
+
+  if (minutes < 60) return plural(minutes, 'minute');
+  if (minutes < 1440) return plural(Math.round(minutes / 60), 'hour');
+  if (minutes < 43_200) return plural(Math.round(minutes / 1440), 'day');
+  return plural(Math.round(minutes / 43_200), 'month');
+}
+
+/**
+ * Where an event is in its check-in window. Mirrors the server rule — doors open an hour
+ * before the start and stay open three hours past the end — so the panel can explain
+ * itself without a round trip. The server still has the final say.
+ */
+export function checkInWindow(event: Pick<EventRecord, 'startsAt' | 'endsAt'>): 'early' | 'open' | 'closed' {
+  const now = Date.now();
+  if (now < new Date(event.startsAt).getTime() - 60 * 60_000) return 'early';
+  if (now > new Date(event.endsAt).getTime() + 3 * 60 * 60_000) return 'closed';
+  return 'open';
+}
+
 /** "42 people are going" — the exact phrasing the brief asks for. */
 export function formatRsvpCount(count: number): string {
   if (count === 0) return 'Be the first to go';

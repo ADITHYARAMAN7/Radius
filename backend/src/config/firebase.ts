@@ -38,7 +38,10 @@ export function initFirebase(): admin.app.App {
 
   if (env.firestoreEmulatorHost) {
     process.env.FIRESTORE_EMULATOR_HOST = env.firestoreEmulatorHost;
-    logger.warn('Firestore emulator mode', { host: env.firestoreEmulatorHost });
+    logger.warn('Firestore emulator mode', {
+      host: env.firestoreEmulatorHost,
+      authEmulator: process.env.FIREBASE_AUTH_EMULATOR_HOST || '(none — real Firebase Auth)',
+    });
   }
 
   const credential = resolveCredential();
@@ -50,7 +53,7 @@ export function initFirebase(): admin.app.App {
       : isEmulator
         ? {}
         : { credential: admin.credential.applicationDefault() }),
-    projectId: env.projectId || 'nearby-objects-local',
+    projectId: env.projectId || 'demo-nearby-events',
     ...(env.gcsBucket ? { storageBucket: env.gcsBucket } : {}),
   });
 

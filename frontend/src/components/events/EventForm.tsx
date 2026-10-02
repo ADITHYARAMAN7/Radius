@@ -15,9 +15,11 @@ import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Field';
 import { Badge, Card, Panel } from '@/components/ui/Primitives';
 import { useToast } from '@/components/ui/Toast';
+import { EventLocationPin } from './EventLocationPin';
 import { api, ApiError } from '@/lib/api';
 import {
   CATEGORIES,
+  type AiProvider,
   type AiSuggestion,
   type Category,
   type EventFormPayload,
@@ -201,10 +203,13 @@ function AiPanel({
   form,
   onApply,
   available,
+  provider,
 }: {
   form: FormState;
   onApply: (suggestion: AiSuggestion, fields: Set<keyof AiSuggestion>) => void;
   available: boolean;
+  /** Which engine answers — Gemini, or the built-in assistant when no key is configured. */
+  provider: AiProvider;
 }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -281,8 +286,9 @@ function AiPanel({
             AI event assistant
           </h2>
           <p className="mt-1.5 max-w-md text-sm leading-relaxed text-ink-soft">
-            Jot down a rough idea and Gemini will suggest a clearer title, a structured description,
-            a category and tags. Entirely optional — you can publish without it.
+            Jot down a rough idea and {provider === 'gemini' ? 'Gemini' : 'the built-in assistant'}{' '}
+            will suggest a clearer title, a structured description, a category and tags. Entirely
+            optional — you can publish without it.
           </p>
         </div>
 
@@ -522,6 +528,7 @@ export function EventForm({
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
   const [aiAvailable, setAiAvailable] = useState(false);
+  const [aiProvider, setAiProvider] = useState<AiProvider>('local');
   /**
    * A toast disappears after five seconds. Someone who looks away, or who uses a screen
    * reader and navigates back up the form, needs the failure still on the page — so the
@@ -550,7 +557,10 @@ export function EventForm({
   useEffect(() => {
     api
       .aiStatus()
-      .then((status) => setAiAvailable(status.available))
+      .then((status) => {
+        setAiAvailable(status.available);
+        setAiProvider(status.provider ?? 'gemini');
+      })
       .catch(() => setAiAvailable(false))
       .finally(() => setAiChecked(true));
   }, []);
@@ -824,7 +834,8 @@ export function EventForm({
 
       {!isEdit && aiChecked && (
         <SnapPoster
-          available={aiAvailable}
+          // Reading a poster needs Gemini itself; the rule-based fallback cannot, and must not guess.
+          available={aiAvailable && aiProvider === 'gemini'}
           onExtracted={handleExtracted}
           onUsePoster={(image) =>
             setForm((current) => ({ ...current, imageUrl: image.imageUrl, imagePath: image.imagePath }))
@@ -875,7 +886,7 @@ export function EventForm({
         </div>
       )}
 
-      <AiPanel form={form} onApply={applyAi} available={aiAvailable} />
+      <AiPanel form={form} onApply={applyAi} available={aiAvailable} provider={aiProvider} />
 
       {/* ------------------------------------------------------ the basics */}
       <Card className="space-y-5 p-5 sm:p-6">
@@ -1087,50 +1098,18 @@ export function EventForm({
           />
         </div>
 
-        {placesMode ? (
-          // Coordinates come from the picked suggestion; showing them lets the user see
-          // (and drop) a pin that no longer matches what they typed.
-          form.latitude && form.longitude ? (
-            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
-              <span>
-                Pinned on the map at {form.latitude}, {form.longitude}.
-              </span>
-              <button
-                type="button"
-                onClick={() => setForm((current) => ({ ...current, latitude: '', longitude: '' }))}
-                className="font-semibold text-brand underline-offset-2 hover:underline"
-              >
-                Remove pin
-              </button>
-            </p>
-          ) : (
-            <p className="text-xs text-ink-muted">No map pin yet: pick an address suggestion to add one.</p>
-          )
-        ) : (
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Input
-            id="field-latitude"
-            label="Latitude"
-            value={form.latitude}
-            onChange={(changeEvent) => set('latitude', changeEvent.target.value)}
-            error={errors.latitude}
-            hint="Optional — adding both coordinates puts your event on the map."
-            placeholder="11.0168"
-            inputMode="decimal"
-          />
-
-          <Input
-            id="field-longitude"
-            label="Longitude"
-            value={form.longitude}
-            onChange={(changeEvent) => set('longitude', changeEvent.target.value)}
-            error={errors.longitude}
-            hint="Right-click a spot in Google Maps to copy its coordinates."
-            placeholder="76.9558"
-            inputMode="decimal"
-          />
-        </div>
-        )}
+        <EventLocationPin
+          address={form.address}
+          neighborhood={form.neighborhood}
+          city={form.city}
+          latitude={form.latitude}
+          longitude={form.longitude}
+          errors={{ latitude: errors.latitude, longitude: errors.longitude }}
+          onChange={(latitude, longitude) => {
+            set('latitude', latitude);
+            set('longitude', longitude);
+          }}
+        />
       </Card>
 
       {/* ------------------------------------------------------------ image */}

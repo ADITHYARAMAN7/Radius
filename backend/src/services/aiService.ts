@@ -3,6 +3,11 @@ import { capabilities, env } from '../config/env';
 import { logger } from '../config/logger';
 import { AppError } from '../middleware/error';
 import { CATEGORIES, type AiSuggestion, type Category, type DateFilter } from '../types';
+import { parseSearchLocally, suggestLocally } from './localAssistant';
+import { getPlaceIndex } from './statsService';
+
+/** Which engine answered: Gemini, or the rule-based assistant that needs no key. */
+export type AiSource = 'gemini' | 'local';
 
 let client: GoogleGenAI | null = null;
 
@@ -136,8 +141,12 @@ export interface AssistInput {
  * listing. Purely additive: the caller decides which suggested fields to accept, and
  * event creation never depends on this succeeding.
  */
-export async function generateEventSuggestion(input: AssistInput): Promise<AiSuggestion> {
-  getClient();
+export async function generateEventSuggestion(
+  input: AssistInput,
+): Promise<AiSuggestion & { source: AiSource }> {
+  // No Gemini on this deployment: the built-in assistant does the same job with rules.
+  // Otherwise: main model → fallback model (generateWithFallback) → rules (catch below).
+  if (!capabilities.ai) return { ...suggestLocally(input), source: 'local' };
 
   const place = [input.neighborhood, input.city].filter(Boolean).join(', ');
 
@@ -187,17 +196,18 @@ export async function generateEventSuggestion(input: AssistInput): Promise<AiSug
       category: suggestion.category,
     });
 
-    return suggestion;
+    return { ...suggestion, source: 'gemini' };
   } catch (error) {
     if (error instanceof AppError) throw error;
 
     const message = (error as { message?: string }).message ?? 'unknown error';
-    logger.error('Gemini request failed', { reason: message, model: env.geminiModel });
+    logger.error('Gemini request failed, using the built-in assistant', {
+      reason: message,
+      model: env.geminiModel,
+    });
 
-    // The form stays usable — this is an optional assist, not a required step.
-    throw AppError.unavailable(
-      'The AI assistant could not be reached just now. You can keep writing and publish without it.',
-    );
+    // A quota error or an outage should not turn the button into a dead end.
+    return { ...suggestLocally(input), source: 'local' };
   }
 }
 
@@ -230,6 +240,12 @@ export interface SearchIntent {
   dateFilter: DateFilter;
   neighborhood: string;
   city: string;
+  source: AiSource;
+}
+
+async function parseSearchWithRules(query: string): Promise<SearchIntent> {
+  const places = await getPlaceIndex().catch(() => ({ neighborhoods: [], cities: [] }));
+  return { ...parseSearchLocally(query, places), source: 'local' };
 }
 
 /**
@@ -238,7 +254,7 @@ export interface SearchIntent {
  * language work; the existing Firestore pipeline does the retrieval.
  */
 export async function parseSearchIntent(query: string): Promise<SearchIntent> {
-  getClient();
+  if (!capabilities.ai) return parseSearchWithRules(query);
 
   try {
     const { response } = await generateWithFallback('search intent', {
@@ -269,16 +285,17 @@ export async function parseSearchIntent(query: string): Promise<SearchIntent> {
         : 'upcoming',
       neighborhood: String(parsed.neighborhood ?? '').trim().slice(0, 100),
       city: String(parsed.city ?? '').trim().slice(0, 100),
+      source: 'gemini',
     };
   } catch (error) {
     if (error instanceof AppError) throw error;
 
-    logger.warn('Smart search parse failed, falling back to keyword search', {
+    logger.warn('Smart search parse failed, falling back to the built-in parser', {
       reason: (error as { message?: string }).message,
     });
 
-    // Degrading to a plain keyword search is better than failing the search outright.
-    return { keywords: query.trim().slice(0, 120), category: null, dateFilter: 'upcoming', neighborhood: '', city: '' };
+    // Degrading to rule-based parsing is better than failing the search outright.
+    return parseSearchWithRules(query);
   }
 }
 

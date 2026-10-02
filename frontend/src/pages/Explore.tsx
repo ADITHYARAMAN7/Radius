@@ -12,7 +12,14 @@ import { useDebounced, useEvents } from '@/hooks/useEvents';
 import { useRsvp } from '@/hooks/useRsvp';
 import { useTheme } from '@/hooks/useTheme';
 import { api } from '@/lib/api';
-import { CATEGORIES, type Category, type DateFilter, type EventFiltersState, type SortOption } from '@/lib/types';
+import {
+  CATEGORIES,
+  type AiProvider,
+  type Category,
+  type DateFilter,
+  type EventFiltersState,
+  type SortOption,
+} from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 type ViewMode = 'list' | 'map' | 'calendar';
@@ -117,6 +124,7 @@ export default function Explore() {
     return toDayKey(parsed ?? new Date());
   });
   const [aiAvailable, setAiAvailable] = useState(false);
+  const [aiProvider, setAiProvider] = useState<AiProvider>('local');
 
   // Only the text query is debounced; a chip press should feel immediate.
   const debouncedSearch = useDebounced(filters.search, 350);
@@ -128,7 +136,10 @@ export default function Explore() {
   useEffect(() => {
     api
       .aiStatus()
-      .then((status) => setAiAvailable(status.available))
+      .then((status) => {
+        setAiAvailable(status.available);
+        setAiProvider(status.provider ?? 'gemini');
+      })
       .catch(() => setAiAvailable(false));
   }, []);
 
@@ -215,6 +226,7 @@ export default function Explore() {
           resultCount={data?.total ?? 0}
           loading={loading}
           aiAvailable={aiAvailable}
+          aiProvider={aiProvider}
         />
       </div>
 

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { currentUser, requireAuth, type AuthedRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/error';
 import { profileUpdateSchema } from '../middleware/validate';
-import { listEventsAttending, listEventsByCreator } from '../services/eventService';
+import { listEventsAttending, listEventsByCreator, listSavedEvents } from '../services/eventService';
 import { ensureProfile, updateProfile } from '../services/userService';
 
 export const usersRouter = Router();
@@ -60,6 +60,16 @@ usersRouter.get(
   requireAuth,
   asyncHandler(async (req: AuthedRequest, res) => {
     const events = await listEventsAttending(currentUser(req).uid);
+    res.json({ events, total: events.length });
+  }),
+);
+
+/** GET /api/me/saved — events bookmarked for later. */
+usersRouter.get(
+  '/saved',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const events = await listSavedEvents(currentUser(req).uid);
     res.json({ events, total: events.length });
   }),
 );

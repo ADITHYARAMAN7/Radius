@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Activity, BarChart3, CalendarCheck2, CalendarX2, MapPin, TrendingUp, Users } from 'lucide-react';
+import { Activity, BadgeCheck, BarChart3, CalendarCheck2, CalendarX2, MapPin, TrendingUp, Users } from 'lucide-react';
 import { ButtonLink } from '@/components/ui/Button';
 import { Card, StatTile } from '@/components/ui/Primitives';
 import { EmptyState, ErrorState, PageSkeleton } from '@/components/common/States';
@@ -210,6 +210,16 @@ export default function Insights() {
               : undefined
           }
           icon={<Users className="h-4 w-4" aria-hidden="true" />}
+        />
+        <StatTile
+          label="Checked in at the door"
+          value={data.totals.checkIns}
+          hint={
+            data.totals.rsvps > 0
+              ? `${Math.round((data.totals.checkIns / data.totals.rsvps) * 100)}% of all RSVPs turned up`
+              : 'People who actually turned up'
+          }
+          icon={<BadgeCheck className="h-4 w-4" aria-hidden="true" />}
         />
         <StatTile
           label="Most popular category"

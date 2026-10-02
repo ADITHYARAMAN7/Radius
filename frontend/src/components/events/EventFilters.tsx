@@ -1,11 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { Crosshair, Search, SlidersHorizontal, Sparkles, X } from 'lucide-react';
+import { Crosshair, Mic, Search, SlidersHorizontal, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Primitives';
 import { CategoryIcon } from './CategoryBadge';
 import { api, ApiError } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
-import { CATEGORIES, type Category, type DateFilter, type EventFiltersState, type SortOption } from '@/lib/types';
+import { useVoiceSearch } from '@/hooks/useVoiceSearch';
+import {
+  CATEGORIES,
+  type AiProvider,
+  type Category,
+  type DateFilter,
+  type EventFiltersState,
+  type SortOption,
+} from '@/lib/types';
 import { cn, DATE_FILTERS } from '@/lib/utils';
 
 const SORTS: Array<{ value: SortOption; label: string }> = [
@@ -22,8 +30,10 @@ interface EventFiltersProps {
   onReset: () => void;
   resultCount: number;
   loading: boolean;
-  /** Whether the Gemini-backed smart search is available on this deployment. */
+  /** Whether smart search is available on this deployment. */
   aiAvailable: boolean;
+  /** Gemini, or the built-in rule-based parser used when no Gemini key is configured. */
+  aiProvider?: AiProvider;
 }
 
 function Chip({
@@ -68,6 +78,7 @@ export function EventFilters({
   resultCount,
   loading,
   aiAvailable,
+  aiProvider = 'gemini',
 }: EventFiltersProps) {
   const toast = useToast();
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -157,11 +168,12 @@ export function EventFilters({
   }, []);
 
   /**
-   * Hands the sentence to Gemini, which returns the structured filters the board already
-   * understands — so retrieval stays in Firestore and the model only does the language.
+   * Hands the sentence to the assistant, which returns the structured filters the board
+   * already understands — so retrieval stays in Firestore and the assistant only does the
+   * language. `spoken` is the transcript when the query arrived by voice.
    */
-  const runSmartSearch = async () => {
-    const query = filters.search.trim();
+  const runSmartSearch = async (spoken?: string) => {
+    const query = (spoken ?? filters.search).trim();
     if (query.length < 3) {
       toast.info('Type a little more', 'Try something like "free tech workshops this weekend".');
       return;
@@ -191,6 +203,13 @@ export function EventFilters({
         applied.length ? `Reading that as: ${applied.join(' · ')}` : 'Searching across all upcoming events.',
       );
     } catch (error) {
+      // Smart search needs an account; a spoken query still works as a plain keyword search.
+      if (error instanceof ApiError && error.isAuthError) {
+        onChange({ search: query });
+        toast.info('Searching by keyword', 'Sign in to let smart search set the filters for you.');
+        return;
+      }
+
       const message =
         error instanceof ApiError ? error.message : 'Smart search is unavailable right now.';
       toast.error('Smart search failed', message);
@@ -198,6 +217,16 @@ export function EventFilters({
       setAiBusy(false);
     }
   };
+
+  const voice = useVoiceSearch({
+    onInterim: (text) => onChange({ search: text }),
+    onResult: (text) => {
+      onChange({ search: text });
+      // A spoken query is a sentence, which is exactly what smart search is for.
+      if (aiAvailable) void runSmartSearch(text);
+    },
+    onError: (message) => toast.error('Voice search', message),
+  });
 
   return (
     <div className="space-y-4">
@@ -220,32 +249,61 @@ export function EventFilters({
                 void runSmartSearch();
               }
             }}
-            placeholder="Search events, neighbourhoods or cities…"
+            placeholder={voice.listening ? 'Listening…' : 'Search events, neighbourhoods or cities…'}
             aria-label="Search events by title, description, category, neighbourhood or city"
-            className="h-12 w-full rounded-xl bg-surface pl-11 pr-11 text-sm text-ink ring-1 ring-inset ring-border transition-shadow placeholder:text-ink-muted hover:ring-border-strong focus:outline-none focus:ring-2 focus:ring-brand [&::-webkit-search-cancel-button]:hidden"
+            className="h-12 w-full rounded-xl bg-surface pl-11 pr-20 text-sm text-ink ring-1 ring-inset ring-border transition-shadow placeholder:text-ink-muted hover:ring-border-strong focus:outline-none focus:ring-2 focus:ring-brand [&::-webkit-search-cancel-button]:hidden"
           />
 
-          {filters.search && (
-            <button
-              type="button"
-              onClick={() => onChange({ search: '' })}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink"
-              aria-label="Clear search"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
-          )}
+          <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+            {filters.search && !voice.listening && (
+              <button
+                type="button"
+                onClick={() => onChange({ search: '' })}
+                className="rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
+
+            {/* Hidden where the browser has no speech recognition, rather than shown broken. */}
+            {voice.supported && (
+              <button
+                type="button"
+                onClick={voice.listening ? voice.stop : voice.start}
+                aria-pressed={voice.listening}
+                aria-label={voice.listening ? 'Stop listening' : 'Search by voice'}
+                title={voice.listening ? 'Stop listening' : 'Search by voice'}
+                className={cn(
+                  'relative rounded-lg p-1.5 transition-colors',
+                  voice.listening
+                    ? 'bg-danger-soft text-danger'
+                    : 'text-ink-muted hover:bg-surface-sunken hover:text-ink',
+                )}
+              >
+                {voice.listening && (
+                  <span
+                    className="absolute inset-0 animate-ping rounded-lg bg-danger/20"
+                    aria-hidden="true"
+                  />
+                )}
+                <Mic className="relative h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
+          </div>
         </div>
 
         {aiAvailable && (
           <Button
             variant="soft"
             size="lg"
-            onClick={runSmartSearch}
+            onClick={() => void runSmartSearch()}
             loading={aiBusy}
             loadingLabel="Thinking"
             className="sm:w-auto"
-            title="Describe what you want in plain words and let Gemini set the filters"
+            title={`Describe what you want in plain words and let ${
+              aiProvider === 'gemini' ? 'Gemini' : 'the built-in assistant'
+            } set the filters`}
           >
             <Sparkles className="h-4 w-4" aria-hidden="true" />
             Smart search

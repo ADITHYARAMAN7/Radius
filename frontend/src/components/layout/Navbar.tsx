@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import {
   BarChart3,
+  Bookmark,
   CalendarHeart,
   CalendarPlus,
   Compass,
@@ -10,6 +11,7 @@ import {
   Menu,
   Moon,
   Sun,
+  Trophy,
   User as UserIcon,
   X,
 } from 'lucide-react';
@@ -22,11 +24,12 @@ import { cn } from '@/lib/utils';
 const NAV_LINKS = [
   { to: '/explore', label: 'Explore', icon: Compass },
   { to: '/my-events', label: 'My events', icon: CalendarHeart, protected: true },
+  { to: '/community', label: 'Community', icon: Trophy },
   { to: '/insights', label: 'Insights', icon: BarChart3 },
 ];
 
 export function Navbar({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onToggleTheme: () => void }) {
-  const { user, signOut, initialising } = useAuth();
+  const { user, profile, signOut, initialising } = useAuth();
   const displayName = useDisplayName();
   const toast = useToast();
   const navigate = useNavigate();
@@ -171,6 +174,12 @@ export function Navbar({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onTo
                     <div className="px-3 py-2.5">
                       <p className="truncate text-sm font-bold text-ink">{displayName}</p>
                       {user.email && <p className="truncate text-xs text-ink-muted">{user.email}</p>}
+                      {profile && (
+                        <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-brand">
+                          <Trophy className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span className="tabular-nums">{profile.points}</span> points · {profile.level.name}
+                        </p>
+                      )}
                     </div>
 
                     <div className="my-1 h-px bg-border" role="separator" />
@@ -178,6 +187,7 @@ export function Navbar({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onTo
                     {[
                       { to: '/my-events', label: 'My events', icon: CalendarHeart },
                       { to: '/my-rsvps', label: "Events I'm attending", icon: CalendarPlus },
+                      { to: '/my-rsvps?tab=saved', label: 'Saved events', icon: Bookmark },
                       { to: '/profile', label: 'Profile', icon: UserIcon },
                     ].map((item) => (
                       <Link
@@ -273,6 +283,7 @@ export function Navbar({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onTo
                       { to: '/profile', label: 'Profile', icon: UserIcon },
                     ]
                   : []),
+                { to: '/community', label: 'Community', icon: Trophy },
                 { to: '/insights', label: 'Insights', icon: BarChart3 },
               ].map((item) => (
                 <NavLink

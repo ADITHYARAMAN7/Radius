@@ -13,7 +13,8 @@ export default defineConfig({
     // talks to one origin and CORS stays out of the way while developing.
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        // Override when the API runs somewhere else, e.g. DEV_API_TARGET=http://localhost:8090
+        target: process.env.DEV_API_TARGET || 'http://localhost:8080',
         changeOrigin: true,
       },
     },

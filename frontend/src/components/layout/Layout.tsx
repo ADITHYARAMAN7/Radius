@@ -76,6 +76,7 @@ function Footer() {
               {[
                 { to: '/explore', label: 'Explore events' },
                 { to: '/events/new', label: 'Create an event' },
+                { to: '/community', label: 'Community & leaderboard' },
                 { to: '/insights', label: 'Community insights' },
               ].map((item) => (
                 <li key={item.to}>

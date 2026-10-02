@@ -6,6 +6,8 @@ import { Badge, Card } from '@/components/ui/Primitives';
 import { EventCard } from '@/components/events/EventCard';
 import { CategoryIcon } from '@/components/events/CategoryBadge';
 import { NearbyEvents } from '@/components/events/NearbyEvents';
+import { RecommendedSection } from '@/components/events/RecommendedSection';
+import { TrendingSection } from '@/components/events/TrendingSection';
 import { EmptyState, EventGridSkeleton, ErrorState } from '@/components/common/States';
 import { useEvents } from '@/hooks/useEvents';
 import { useRsvp } from '@/hooks/useRsvp';
@@ -225,8 +227,8 @@ function HowItWorks() {
       icon: MapPin,
     },
     {
-      title: 'Say you are going',
-      body: 'One tap to RSVP. The organiser sees the count, you get the event in your own list, and you can cancel any time.',
+      title: 'Say you are going — then turn up',
+      body: 'One tap to RSVP, and a quick QR check-in at the venue. Both earn neighbour points, and turning up earns the most.',
       icon: Users,
     },
     {
@@ -284,6 +286,10 @@ export default function Home() {
         exists to answer, so it should not be below three other sections.
       */}
       <NearbyEvents />
+
+      <RecommendedSection />
+
+      <TrendingSection />
 
       <EventSection
         title="Happening this week"

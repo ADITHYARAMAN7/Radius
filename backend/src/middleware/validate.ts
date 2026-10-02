@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { capabilities } from '../config/env';
+import { isLocalUploadUrl } from '../services/storageService';
 import { CATEGORIES } from '../types';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -20,6 +22,11 @@ const httpsUrl = (max = 600) =>
     .trim()
     .max(max)
     .superRefine((value, ctx) => {
+      // The one exception to "https only": a path this API issued itself for a photo kept
+      // on local disk in development. It is matched against a strict pattern, so it cannot
+      // smuggle a scheme, a host or a traversal.
+      if (capabilities.localStorage && isLocalUploadUrl(value)) return;
+
       let parsed: URL;
       try {
         parsed = new URL(value);
@@ -166,6 +173,28 @@ export const aiExtractSchema = z.object({
     .default(''),
   timezone: trimmed(64).optional().default(''),
 });
+
+export const commentSchema = z.object({
+  text: z
+    .string()
+    .trim()
+    .min(2, 'Write at least a couple of characters.')
+    .max(500, 'Keep it under 500 characters.'),
+});
+
+export const checkInSchema = z.object({
+  code: z.string().trim().min(4, 'Enter the check-in code.').max(12, 'That code is too long.'),
+});
+
+export const geocodeSchema = z
+  .object({
+    address: trimmed(300).optional().default(''),
+    neighborhood: trimmed(100).optional().default(''),
+    city: trimmed(100).optional().default(''),
+  })
+  .refine((value) => Boolean(value.address || value.neighborhood || value.city), {
+    message: 'Add an address, a neighbourhood or a city first.',
+  });
 
 export const rsvpStatusSchema = z.object({
   status: z.enum(['going', 'cancelled']).optional().default('going'),

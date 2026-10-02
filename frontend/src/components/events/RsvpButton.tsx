@@ -50,7 +50,9 @@ export function RsvpButton({
       loading={pending}
       loadingLabel={attending ? 'Cancelling' : 'Joining'}
       onClick={() => onToggle(event)}
-      className={cn('group', className)}
+      // A named group: the card itself is also a `group`, and an unnamed one here would
+      // flip the label to "Cancel RSVP" whenever the pointer is anywhere on the card.
+      className={cn('group/rsvp', className)}
       // Spells out what the button does and the count it affects, since the visible
       // label alone ("I'm Going") does not say which event.
       aria-label={
@@ -62,9 +64,9 @@ export function RsvpButton({
       {attending ? (
         <>
           <Check className="h-4 w-4" aria-hidden="true" />
-          <span className="group-hover:hidden">You&rsquo;re going</span>
+          <span className="group-hover/rsvp:hidden">You&rsquo;re going</span>
           {/* Hover reveals that pressing again cancels, so the action is never a surprise. */}
-          <span className="hidden group-hover:inline">Cancel RSVP</span>
+          <span className="hidden group-hover/rsvp:inline">Cancel RSVP</span>
         </>
       ) : (
         <>

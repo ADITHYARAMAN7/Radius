@@ -22,6 +22,7 @@ const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const Insights = lazy(() => import('@/pages/Insights'));
+const Community = lazy(() => import('@/pages/Community'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 function Deferred({ children }: { children: React.ReactNode }) {
@@ -116,6 +117,15 @@ export default function App() {
           element={
             <Deferred>
               <Insights />
+            </Deferred>
+          }
+        />
+
+        <Route
+          path="community"
+          element={
+            <Deferred>
+              <Community />
             </Deferred>
           }
         />

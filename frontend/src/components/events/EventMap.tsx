@@ -1,18 +1,47 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { loadMapsLibrary } from '@/lib/maps';
 import { Link } from 'react-router-dom';
-import { MapPinOff, X } from 'lucide-react';
-import { Badge, Card } from '@/components/ui/Primitives';
-import { ButtonLink } from '@/components/ui/Button';
+import { MapPinOff } from 'lucide-react';
+import { Badge } from '@/components/ui/Primitives';
 import { EmptyState } from '@/components/common/States';
-import { CategoryBadge } from './CategoryBadge';
-import { cn, formatEventDate, formatRsvpCount, formatTimeRange } from '@/lib/utils';
+import { CATEGORY_PIN_COLORS, DEFAULT_MAP_CENTER, EventMapPreview } from './EventMapPreview';
+import { cn } from '@/lib/utils';
 import type { EventRecord } from '@/lib/types';
 
 const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
 
-/** Coimbatore city centre — the fallback view when no event has coordinates. */
-const DEFAULT_CENTER = { lat: 11.0168, lng: 76.9558 };
+const DEFAULT_CENTER = DEFAULT_MAP_CENTER;
+
+/** Split out so Leaflet is only downloaded when a map is actually shown without a Google key. */
+const LeafletEventMap = lazy(() => import('./LeafletEventMap'));
+
+interface EventMapProps {
+  events: EventRecord[];
+  theme: 'light' | 'dark';
+  className?: string;
+}
+
+/**
+ * Map view of a set of events.
+ *
+ * Google Maps when a key is configured; otherwise an OpenStreetMap map that needs no key
+ * at all — so the map is never a dead "unavailable" panel.
+ */
+export function EventMap(props: EventMapProps) {
+  if (MAPS_KEY) return <GoogleEventMap {...props} />;
+
+  return (
+    <Suspense
+      fallback={
+        <div className={cn('relative overflow-hidden rounded-panel ring-1 ring-border', props.className)}>
+          <div className="shimmer h-full min-h-[18rem] w-full" />
+        </div>
+      }
+    >
+      <LeafletEventMap {...props} />
+    </Suspense>
+  );
+}
 
 /** The shared loader in lib/maps.ts owns the single Loader instance. */
 function loadMaps(): Promise<typeof google.maps> {
@@ -38,17 +67,6 @@ const DARK_STYLE: google.maps.MapTypeStyle[] = [
   { featureType: 'water', stylers: [{ color: '#0f1724' }] },
 ];
 
-const CATEGORY_PIN_COLORS: Record<string, string> = {
-  Sports: '#10b981',
-  Music: '#8b5cf6',
-  Food: '#f97316',
-  'Yard Sale': '#f59e0b',
-  Community: '#0ea5e9',
-  Education: '#3b82f6',
-  Technology: '#6366f1',
-  Other: '#64748b',
-};
-
 function pinIcon(color: string, selected: boolean): google.maps.Symbol {
   return {
     path: 'M12 2C7.6 2 4 5.6 4 10c0 6 8 12 8 12s8-6 8-12c0-4.4-3.6-8-8-8z',
@@ -62,21 +80,13 @@ function pinIcon(color: string, selected: boolean): google.maps.Symbol {
 }
 
 /**
- * Map view of the current result set.
+ * The Google Maps implementation.
  *
  * Markers are managed imperatively against the plain Maps JS API rather than through a
  * React wrapper, which keeps marker churn out of the React render path — the list and the
  * map share one data source, so switching views never refetches.
  */
-export function EventMap({
-  events,
-  theme,
-  className,
-}: {
-  events: EventRecord[];
-  theme: 'light' | 'dark';
-  className?: string;
-}) {
+function GoogleEventMap({ events, theme, className }: EventMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
@@ -225,7 +235,7 @@ export function EventMap({
   }
 
   return (
-    <div className={cn('relative overflow-hidden rounded-panel ring-1 ring-border', className)}>
+    <div className={cn('relative isolate overflow-hidden rounded-panel ring-1 ring-border', className)}>
       <div
         ref={containerRef}
         className="h-full min-h-[28rem] w-full bg-surface-sunken"
@@ -250,49 +260,7 @@ export function EventMap({
         </div>
       )}
 
-      {/* ------------------------------------------------------ marker preview */}
-      {selected && (
-        <Card className="absolute bottom-4 left-4 right-4 z-10 animate-fade-up overflow-hidden shadow-lg sm:right-auto sm:w-80">
-          <div className="flex gap-3 p-3">
-            {selected.imageUrl && (
-              <img
-                src={selected.imageUrl}
-                alt=""
-                className="h-20 w-20 shrink-0 rounded-lg object-cover"
-                loading="lazy"
-              />
-            )}
-
-            <div className="min-w-0 flex-1">
-              <CategoryBadge category={selected.category} size="sm" />
-
-              <h3 className="clamp-2 mt-1.5 font-display text-sm font-bold leading-snug text-ink">
-                {selected.title}
-              </h3>
-
-              <p className="mt-1 text-xs text-ink-soft">
-                {formatEventDate(selected.startsAt)} · {formatTimeRange(selected.startTime, selected.endTime)}
-              </p>
-              <p className="mt-0.5 text-xs text-ink-muted">{formatRsvpCount(selected.rsvpCount)}</p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              className="-m-1 h-7 w-7 shrink-0 rounded-lg text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink"
-              aria-label="Close event preview"
-            >
-              <X className="mx-auto h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
-
-          <div className="border-t border-border p-2">
-            <ButtonLink to={`/events/${selected.id}`} variant="soft" size="sm" full>
-              View full event
-            </ButtonLink>
-          </div>
-        </Card>
-      )}
+      {selected && <EventMapPreview event={selected} onClose={() => setSelected(null)} />}
 
       {/* A plain list of the pins, so the map is not the only way to reach them. */}
       <ul className="sr-only">

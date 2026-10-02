@@ -41,8 +41,12 @@ setInterval(() => {
   for (const [key, entry] of hits) if (entry.resetAt < now) hits.delete(key);
 }, WINDOW_MS).unref();
 
+/**
+ * The assistant is always available: Gemini when it is configured, otherwise the built-in
+ * rule-based engine. `provider` lets the UI label which one the user is talking to.
+ */
 aiRouter.get('/status', (_req, res) => {
-  res.json({ available: capabilities.ai });
+  res.json({ available: true, provider: capabilities.ai ? 'gemini' : 'local' });
 });
 
 /**

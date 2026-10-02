@@ -3,10 +3,13 @@ import { logger } from '../config/logger';
 import type { AuthUser } from '../middleware/auth';
 import type { UserProfile } from '../types';
 import { toIso } from '../utils/dates';
+import { badgesFor, levelFor, readStats } from './gamificationService';
 
 const USERS = 'users';
 
 function toProfile(uid: string, data: DocumentData): UserProfile {
+  const points = typeof data.points === 'number' ? Math.max(0, data.points) : 0;
+
   return {
     uid,
     displayName: String(data.displayName ?? 'Neighbour'),
@@ -17,6 +20,11 @@ function toProfile(uid: string, data: DocumentData): UserProfile {
     city: String(data.city ?? ''),
     createdAt: toIso(data.createdAt),
     updatedAt: toIso(data.updatedAt),
+
+    points,
+    level: levelFor(points),
+    stats: readStats(data),
+    badges: badgesFor(data),
   };
 }
 
@@ -89,4 +97,20 @@ export async function updateProfile(
 
   const fresh = await ref.get();
   return toProfile(uid, fresh.data() as DocumentData);
+}
+
+/**
+ * The caller as they should appear on anything they create.
+ *
+ * The ID token carries the name from sign-up, but the profile page is where people change
+ * it — so the stored profile wins, and the token is only the fallback for a first visit.
+ */
+export async function resolveActor(user: AuthUser): Promise<AuthUser> {
+  const profile = await ensureProfile(user);
+
+  return {
+    ...user,
+    displayName: profile.displayName || user.displayName,
+    photoURL: profile.photoURL ?? user.photoURL,
+  };
 }

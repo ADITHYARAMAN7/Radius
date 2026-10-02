@@ -4,6 +4,7 @@ import { Badge, Card } from '@/components/ui/Primitives';
 import { ButtonLink } from '@/components/ui/Button';
 import { CategoryBadge, CategoryIcon } from './CategoryBadge';
 import { RsvpButton } from './RsvpButton';
+import { SaveButton } from './SaveButton';
 import {
   CATEGORY_STYLES,
   cn,
@@ -26,6 +27,8 @@ interface EventCardProps {
   showStatus?: boolean;
   /** Distance from the viewer in km. Set only where a position is known. */
   distanceKm?: number | null;
+  /** Lets a list react when the bookmark changes, e.g. to drop the card from "Saved". */
+  onSaveChange?: (eventId: string, saved: boolean) => void;
   className?: string;
 }
 
@@ -42,6 +45,7 @@ export function EventCard({
   onToggleRsvp,
   showStatus = false,
   distanceKm = null,
+  onSaveChange,
   className,
 }: EventCardProps) {
   const lifecycle = eventLifecycle(event);
@@ -105,6 +109,9 @@ export function EventCard({
             </Badge>
           )}
         </div>
+
+        {/* Above the stretched link, so saving never opens the event. */}
+        <SaveButton event={event} onChange={onSaveChange} className="absolute right-3 top-3 z-10" />
 
         {/*
           RSVP count sits on the image so it reads at a glance while scanning the grid.
@@ -175,7 +182,7 @@ export function EventCard({
         </dl>
 
         {/* ----------------------------------------------------------- actions */}
-        <div className="relative z-10 mt-4 flex items-center gap-2 pt-1">
+        <div className="relative z-10 mt-auto flex items-center gap-2 pt-5">
           <ButtonLink to={`/events/${event.id}`} variant="secondary" size="sm" className="flex-1">
             View event
           </ButtonLink>

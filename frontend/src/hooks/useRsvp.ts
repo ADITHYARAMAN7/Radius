@@ -18,7 +18,7 @@ interface UseRsvpOptions {
  * is the most visible number on the page.
  */
 export function useRsvp({ onChange }: UseRsvpOptions = {}) {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -43,6 +43,9 @@ export function useRsvp({ onChange }: UseRsvpOptions = {}) {
 
         onChange?.(event.id, result.attending, result.rsvpCount);
 
+        // An RSVP moves neighbour points, so keep the profile in step.
+        void refreshProfile().catch(() => undefined);
+
         if (result.attending) {
           toast.success("You're going", `${event.title} is now in your RSVPs.`);
         } else {
@@ -58,7 +61,7 @@ export function useRsvp({ onChange }: UseRsvpOptions = {}) {
         setPendingId(null);
       }
     },
-    [user, navigate, toast, onChange],
+    [user, navigate, toast, onChange, refreshProfile],
   );
 
   return { toggle, pendingId, isPending: (id: string) => pendingId === id };

@@ -4,13 +4,14 @@ import { Button, ButtonLink } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Field';
 import { Avatar, Card, Separator, StatTile } from '@/components/ui/Primitives';
 import { PageSkeleton } from '@/components/common/States';
+import { NeighbourStanding } from '@/components/community/NeighbourStanding';
 import { useAuth, useDisplayName } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { api, ApiError } from '@/lib/api';
 import { formatEventDateLong } from '@/lib/utils';
 
 export default function Profile() {
-  const { user, profile, setProfile, signOut, initialising } = useAuth();
+  const { user, profile, setProfile, refreshProfile, signOut, initialising } = useAuth();
   const displayName = useDisplayName();
   const toast = useToast();
 
@@ -23,16 +24,26 @@ export default function Profile() {
     document.title = 'Profile — Nearby-objects';
   }, []);
 
+  // Points move whenever the user RSVPs or checks in elsewhere, so read them fresh.
+  useEffect(() => {
+    if (user) void refreshProfile().catch(() => undefined);
+  }, [user, refreshProfile]);
+
+  // Only the first profile to arrive seeds the form; later refreshes carry new points and
+  // must not overwrite what is being typed.
+  const [formSeeded, setFormSeeded] = useState(false);
+
   // Seed the form once the profile arrives, without clobbering in-progress edits.
   useEffect(() => {
-    if (!profile) return;
+    if (!profile || formSeeded) return;
     setForm({
       displayName: profile.displayName,
       bio: profile.bio,
       neighborhood: profile.neighborhood,
       city: profile.city,
     });
-  }, [profile]);
+    setFormSeeded(true);
+  }, [profile, formSeeded]);
 
   useEffect(() => {
     if (!user) return;
@@ -139,6 +150,8 @@ export default function Profile() {
         </div>
       )}
 
+      {profile && <NeighbourStanding profile={profile} className="mt-6" />}
+
       <form onSubmit={onSave} noValidate className="mt-6">
         <Card className="space-y-5 p-5 sm:p-6">
           <h2 className="font-display text-base font-bold text-ink">Details</h2>
@@ -170,6 +183,7 @@ export default function Profile() {
               onChange={(changeEvent) => setForm({ ...form, neighborhood: changeEvent.target.value })}
               error={errors.neighborhood}
               placeholder="Gandhipuram"
+              hint="Used to pick events for you."
             />
 
             <Input
