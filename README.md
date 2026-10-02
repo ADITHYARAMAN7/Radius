@@ -104,13 +104,14 @@ npm run install:all
 
 ### 3. Seed Realistic Demo Data (36 Events)
 ```bash
-npx ts-node scripts/seed-events.ts
+npm run seed          # add/refresh the demo events
+npm run seed:clear    # remove previously seeded events first
 ```
 
 ### 4. Start Development Servers
 In two separate terminals:
 ```bash
-# Terminal 1: Backend API (Port 5000)
+# Terminal 1: Backend API (Port 8080 — the Vite dev server proxies /api here)
 npm run dev:api
 
 # Terminal 2: Frontend Web App (Port 5173)
