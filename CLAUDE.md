@@ -63,7 +63,10 @@ Adhi's Flask version is a prototype; we only port ideas from it (see §6).
 - Security: `firestore.rules` (public read, owner-only writes, rsvpCount/status/creatorId not client-writable).
 
 ### Useful commands (from repo root)
-- `npm run install:all` — install backend + frontend
+- `npm run install:all` — install root + backend + frontend (uses `cd`, so it never edits package.json)
+- `npm run dev:local` — **local dev with no GCP project**: Firestore + Auth emulators (project `demo-nearby`),
+  seeds demo data, runs API + web. Emulator UI on :4000. Needs Java 21 + global `firebase-tools`, and
+  `backend/.env` / `frontend/.env` set up as in README "Run locally with emulators". Data is in-memory.
 - `npm run dev` — run API (:8080) + web (:5173) together; Vite proxies `/api` to :8080.
 - `npm run seed` / `npm run seed:clear` — demo data from `scripts/seed-events.ts`
   (36 events: 29 upcoming + 7 expired, 15 Coimbatore neighborhoods)
@@ -202,3 +205,9 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   Snap-a-Poster is worth re-implementing. **Plan changed**: Kanish unavailable → deployment moved to
   tonight/tomorrow; today = local build with Firebase emulators, features in the §3 order.
   Next: feature 1 (local emulator setup).
+- Oct 2: **Feature 1 done** — `npm run dev:local` (emulators + seed + API + web), Auth emulator added to
+  `firebase.json`, `install:all` fixed (also installs root deps now), seed script refuses a `demo-` project
+  without an emulator, root `.env.example` MAINTENANCE_TOKEN emptied. Verified: 29 upcoming events listed
+  soonest-first, no ended ones; sign-up → create event without image → RSVP → refetch OK; verify script
+  101/101; typecheck + build clean. Java 21 + firebase-tools 15 installed on Suhas's laptop.
+  Next: feature 2 (Snap-a-Poster).

@@ -88,8 +88,8 @@ Nearby-Events/
 ## 🛠️ Quick Start & Running Locally
 
 ### Prerequisites
-- Node.js 18+ & npm
-- Firebase CLI (optional for emulators)
+- Node.js 20+ & npm
+- Firebase CLI + Java 21 (only for the local emulators — see below)
 
 ### 1. Clone the repository
 ```bash
@@ -119,6 +119,44 @@ npm run dev:web
 ```
 
 Visit `http://localhost:5173` in your browser!
+
+### Run locally with emulators (no Google Cloud project needed)
+Firestore and Firebase Auth run as local emulators under the emulator-only project id `demo-nearby`,
+so nothing can touch a real project. Commands below are for Windows PowerShell (they work in other shells too).
+
+**One-time setup**
+```powershell
+winget install --id EclipseAdoptium.Temurin.21.JDK -e   # Java, needed by the emulators
+npm install -g firebase-tools                           # Firebase CLI (no `firebase login` needed)
+# Close and reopen VS Code / the terminal so `java` is on PATH, then check:
+java -version
+firebase --version
+npm run install:all
+```
+
+Create `backend/.env` and `frontend/.env` from their `.env.example` files with these local values:
+
+| File | Setting |
+|---|---|
+| `backend/.env` | `GCP_PROJECT_ID=demo-nearby`, `FIREBASE_PROJECT_ID=demo-nearby`, `GOOGLE_APPLICATION_CREDENTIALS=` (empty), `GCS_BUCKET=` (empty), `FIRESTORE_EMULATOR_HOST=127.0.0.1:8081`, `FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099`, optional `GEMINI_API_KEY=` from [Google AI Studio](https://aistudio.google.com/apikey) |
+| `frontend/.env` | `VITE_FIREBASE_PROJECT_ID=demo-nearby`, `VITE_FIREBASE_API_KEY=emulator`, `VITE_FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099` |
+
+The project id must be the same in both files, or the API rejects sign-in tokens.
+
+**Every time**
+```powershell
+npm run dev:local
+```
+This starts the Firestore + Auth emulators, seeds the 36 demo events, then runs the API (:8080) and web app
+(:5173). Open http://localhost:5173. Emulator UI (browse data and test users): http://localhost:4000.
+Press `Ctrl+C` to stop. Emulator data lives in memory, so events you create disappear on stop and the next
+start reseeds fresh demo data.
+
+**Signing in:** click *Create account* and use any made-up email and a 6+ character password
+(e.g. `test@example.com` / `test1234`). *Continue with Google* also works and shows a fake account picker.
+
+**What is off locally:** image upload (Cloud Storage isn't emulated, the form says so), maps (no Maps key),
+and AI features until you add `GEMINI_API_KEY`. Everything else works.
 
 ---
 

@@ -24,6 +24,22 @@
  */
 
 import { FieldValue, Timestamp, getDb, initFirebase } from '../backend/src/config/firebase';
+import { env } from '../backend/src/config/env';
+
+// Say out loud where the data is going, and never let a "demo-" (emulator-only) project
+// fall through to real Google Cloud credentials.
+const emulatorHost = env.firestoreEmulatorHost || process.env.FIRESTORE_EMULATOR_HOST;
+if (emulatorHost) {
+  console.log(`[Seed] Target: Firestore EMULATOR at ${emulatorHost} (project "${env.projectId || 'nearby-objects-local'}")`);
+} else if (env.projectId.startsWith('demo-')) {
+  console.error(
+    `[Seed] Project "${env.projectId}" is emulator-only but FIRESTORE_EMULATOR_HOST is not set. ` +
+      'Start the emulators (npm run dev:local) or set FIRESTORE_EMULATOR_HOST in backend/.env.',
+  );
+  process.exit(1);
+} else {
+  console.warn(`[Seed] Target: REAL Firestore in project "${env.projectId || '(from credentials)'}"`);
+}
 
 initFirebase();
 const db = getDb();
