@@ -129,6 +129,20 @@ export const aiAssistSchema = z.object({
   neighborhood: trimmed(100).optional().default(''),
 });
 
+/**
+ * Snap-a-Poster text fields. They arrive as multipart form fields next to an optional
+ * image, so everything is a string; an unknown timezone falls back in the service.
+ */
+export const aiExtractSchema = z.object({
+  text: z
+    .string()
+    .trim()
+    .max(4000, 'That message is too long — paste up to 4000 characters.')
+    .optional()
+    .default(''),
+  timezone: trimmed(64).optional().default(''),
+});
+
 export const rsvpStatusSchema = z.object({
   status: z.enum(['going', 'cancelled']).optional().default('going'),
 });

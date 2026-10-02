@@ -7,6 +7,7 @@ import type {
   EventFiltersState,
   EventFormPayload,
   EventRecord,
+  ExtractionResult,
   InsightsPayload,
   Paginated,
   RsvpResult,
@@ -220,6 +221,15 @@ export const api = {
 
   aiSearch: (query: string) =>
     request<{ intent: SearchIntent }>('/ai/search', { method: 'POST', body: { query }, auth: true }),
+
+  /** Snap-a-Poster: a poster photo and/or pasted message in, form values out. */
+  aiExtract: (input: { image?: Blob; text?: string; timezone: string }) => {
+    const form = new FormData();
+    if (input.image) form.append('image', input.image, 'poster');
+    if (input.text) form.append('text', input.text);
+    form.append('timezone', input.timezone);
+    return request<{ result: ExtractionResult }>('/ai/extract', { method: 'POST', formData: form, auth: true });
+  },
 
   uploadStatus: () => request<{ available: boolean; maxBytes: number }>('/uploads/status'),
 

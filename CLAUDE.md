@@ -54,7 +54,8 @@ Adhi's Flask version is a prototype; we only port ideas from it (see §6).
 - `frontend/` — React 18 + TypeScript + Vite + Tailwind. Firebase Auth (login) in the browser.
 - `backend/` — Node 20 + Express + TypeScript. Zod validation, helmet, rate limiting, structured logger.
 - Database: **Cloud Firestore** (`events`, `events/{id}/rsvps`, `users`, `users/{uid}/attending`).
-- Images: Cloud Storage. AI: Gemini (`@google/genai`, default model `gemini-2.5-flash`, or Vertex AI).
+- Images: Cloud Storage. AI: Gemini (`@google/genai`, default model `gemini-3.8-flash`, or Vertex AI).
+  Note: Google no longer offers `gemini-2.5-flash` to new API keys (404) — that was main's old default.
 - Maps: Google Maps JS API via `@googlemaps/js-api-loader` (Explore map + event detail map).
 - Deploy: one Docker image (`docker/Dockerfile`) built by `cloudbuild.yaml` → **Cloud Run** (`asia-south1`).
   Gemini key goes in **Secret Manager**, injected at runtime. `VITE_*` values are public build args.
@@ -160,7 +161,8 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
 - `is_past()` compares a naive datetime (from the form's `YYYY-MM-DDTHH:MM`) with an aware UTC datetime →
   `TypeError` silently caught → past events are **never** hidden.
 - `DELETE /api/events/<id>` has no auth — anyone can delete any event.
-- Uses Gemini model name `gemini-3.8-flash` (unverified); main uses `gemini-2.5-flash`.
+- Its Gemini model name `gemini-3.8-flash` turned out to be right: main's old `gemini-2.5-flash` is no longer
+  available to new keys, so main now defaults to `gemini-3.8-flash` too.
 - Its Snap-a-Poster fallback returns made-up details (a date two days out) when Gemini fails.
 - Worth re-implementing: **Snap-a-Poster** only (§3 item 2). See the branches rules in §2.
 
@@ -211,3 +213,18 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   soonest-first, no ended ones; sign-up → create event without image → RSVP → refetch OK; verify script
   101/101; typecheck + build clean. Java 21 + firebase-tools 15 installed on Suhas's laptop.
   Next: feature 2 (Snap-a-Poster).
+- Oct 2: **Feature 2 done — Snap-a-Poster** (idea by Adhi, credit him in the slides). `POST /api/ai/extract`
+  (auth + AI throttle, image ≤5 MB JPG/PNG/WebP/HEIC sniffed from bytes, and/or text ≤4000 chars) →
+  Gemini structured output → `normalizeExtraction()` (date/time/category clean-up, past-date + missing-end +
+  past-midnight warnings, drops a neighbourhood/city not present in pasted text) → pre-fills the Create form;
+  never overwrites typed fields without asking, AI-filled fields highlighted, end time suggested as start+2h.
+  Browser shrinks photos to 2000px. Tested live: WhatsApp text ("this Saturday 7pm" → correct date), poster
+  photo (10/10 fields), non-event text (found=false), prompt injection ignored, past-midnight warning,
+  >5 MB → 413, bad file → 400, no key → 503 message. verify 116/116.
+  **Found & fixed:** (1) `gemini-2.5-flash` is no longer available to new keys (404) → default is now
+  `gemini-3.8-flash`, which also fixes the existing AI assist/search; (2) `gemini-3.8-flash` often answers
+  503 "high demand" → extraction retries once on `GEMINI_FALLBACK_MODEL` (default `gemini-3.5-flash`), 12s
+  per attempt; (3) uploads over 5 MB returned a generic 500 → `error.ts` now maps multer errors to 413/400.
+  **For later:** the existing "Improve with AI" and AI search don't retry/fall back yet, so they can still fail
+  while Gemini is overloaded.
+  Next: feature 3 (Places Autocomplete).

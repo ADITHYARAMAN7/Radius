@@ -109,6 +109,26 @@ export interface AiSuggestion {
   tags: string[];
 }
 
+/** Snap-a-Poster: form fields the AI can pre-fill. */
+export type ExtractField =
+  | 'title'
+  | 'description'
+  | 'category'
+  | 'date'
+  | 'startTime'
+  | 'endTime'
+  | 'location'
+  | 'address'
+  | 'neighborhood'
+  | 'city';
+
+export interface ExtractionResult {
+  found: boolean;
+  fields: Record<Exclude<ExtractField, 'category'>, string | null> & { category: Category | null };
+  filled: ExtractField[];
+  warnings: string[];
+}
+
 export interface SearchIntent {
   keywords: string;
   category: Category | null;

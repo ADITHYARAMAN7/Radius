@@ -26,6 +26,7 @@ import {
 import { joinEvent, leaveEvent } from '../services/rsvpService';
 import { ensureProfile, updateProfile } from '../services/userService';
 import { getInsights } from '../services/statsService';
+import { normalizeExtraction, nowInTimezone, resolveTimezone } from '../services/aiService';
 import { isOwnedImagePath } from '../services/storageService';
 import { AppError } from '../middleware/error';
 
@@ -572,6 +573,63 @@ async function main(): Promise<void> {
       insights.byCategory.reduce((sum, row) => sum + row.events, 0) <= insights.totals.events,
     );
     check('a generation timestamp is included', Boolean(insights.generatedAt));
+  }
+
+  console.log('\n=== Snap-a-Poster normalisation (no Gemini call) ===');
+  {
+    const context = { today: '2026-10-03', nowTime: '14:00', textOnlySource: null };
+    const base = {
+      isEvent: true,
+      title: 'Street food night',
+      description: 'Stalls from across the city.',
+      category: 'Food',
+      date: '2026-10-05',
+      startTime: '18:00',
+      endTime: '21:00',
+      location: 'Race Course Road',
+      address: null,
+      neighborhood: 'Race Course',
+      city: 'Coimbatore',
+    };
+
+    const clean = normalizeExtraction(base, context);
+    check('a complete extraction is found', clean.found && clean.warnings.length === 0);
+    check('filled lists only non-null fields', !clean.filled.includes('address') && clean.filled.includes('title'));
+
+    const notEvent = normalizeExtraction({ ...base, isEvent: false }, context);
+    check('a non-event returns found=false', !notEvent.found && notEvent.filled.length === 0);
+    check('a non-event carries no invented values', notEvent.fields.title === null && notEvent.fields.date === null);
+
+    const unknownCategory = normalizeExtraction({ ...base, category: 'Party' }, context);
+    check('an unknown category maps to Other', unknownCategory.fields.category === 'Other');
+
+    const badDate = normalizeExtraction({ ...base, date: '2026-02-30' }, context);
+    check('an impossible date is dropped with a warning', badDate.fields.date === null && badDate.warnings.length > 0);
+
+    const past = normalizeExtraction({ ...base, date: '2026-10-01' }, context);
+    check('a past date is kept but warned about', past.fields.date === '2026-10-01' && past.warnings.some((w) => w.includes('already passed')));
+
+    const earlierToday = normalizeExtraction({ ...base, date: '2026-10-03', startTime: '09:00', endTime: '10:00' }, context);
+    check('earlier today counts as passed', earlierToday.warnings.some((w) => w.includes('already passed')));
+
+    const midnight = normalizeExtraction({ ...base, startTime: '21:00', endTime: '01:00' }, context);
+    check('a past-midnight end is cleared with a warning', midnight.fields.endTime === null && midnight.warnings.some((w) => w.includes('midnight')));
+
+    const noEnd = normalizeExtraction({ ...base, endTime: null }, context);
+    check('a missing end time is warned about', noEnd.fields.endTime === null && noEnd.warnings.some((w) => w.includes('end time')));
+
+    const shortTime = normalizeExtraction({ ...base, startTime: '7:30', endTime: '9:00' }, context);
+    check('single-digit hours are zero-padded', shortTime.fields.startTime === '07:30' && shortTime.fields.endTime === '09:00');
+
+    const invented = normalizeExtraction(base, { ...context, textOnlySource: 'Street food night this Monday 6pm at Race Course Road!' });
+    check('a city absent from pasted text is dropped', invented.fields.city === null);
+    check('a neighbourhood present in pasted text is kept', invented.fields.neighborhood === 'Race Course');
+
+    check('an unknown timezone falls back to Asia/Kolkata', resolveTimezone('Mars/Olympus') === 'Asia/Kolkata');
+    check(
+      'wall-clock time follows the timezone',
+      nowInTimezone('Asia/Kolkata', new Date('2026-10-02T20:00:00Z')).date === '2026-10-03',
+    );
   }
 
   await cleanup();
