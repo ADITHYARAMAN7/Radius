@@ -50,12 +50,18 @@ covered by automated tests unless noted.
 |---|---|---|
 | **Snap-a-Poster** — *idea by Adhi* | ✅ | Poster photo (JPG/PNG/WebP/HEIC ≤ 5 MB) or pasted WhatsApp text → Gemini structured output → pre-fills the create form. Relative dates resolved in the user's timezone; past-date, missing-end-time and past-midnight warnings; never invents a place or a date; asks before overwriting typed fields; nothing is auto-posted. Prompt-injection text is ignored (tested). |
 | **Month calendar view** | ✅ | Explore → Calendar. Unpaginated `/api/events/calendar` range endpoint (≤ 6 weeks), days grouped in the viewer's timezone, past days greyed, shareable `?view=calendar&day=` URL |
-| **Places Autocomplete** | ✅ code / ⏳ live test | Places API (New) `PlaceAutocompleteElement`, India-only, biased to Coimbatore; fills address, neighbourhood, city and map pin. Falls back to manual fields without a Maps key |
+| **Places Autocomplete** | ✅ code / ⏳ live test | Places API (New) `PlaceAutocompleteElement`, India-only, biased to Coimbatore; fills address, neighbourhood, city and the draggable map pin. Without a Maps key the address is typed and the pin found via "Find from address" |
+| **Recommended for you** (Kanish) | ✅ | Local Relevance Score: distance 30 %, interests 25 %, time 20 %, freshness 15 %, engagement 10 %, with reasons; 18 unit tests |
+| **Trending / Event Pulse** (Kanish) | ✅ | Recent engagement growth → Trending / Growing / Steady; 33 unit tests |
+| **QR check-in** (Thahseen) | ✅ | 6-character code + printable QR for organisers; guests check in from 1 h before start to 3 h after end |
+| **Neighbour points & leaderboard** (Thahseen) | ✅ | Host +20, RSVP +5, check-in +15; levels, badges, `/community` page |
+| **Q&A, save for later, weather, voice search** (Thahseen) | ✅ | Per-event question thread; saved tab; Open-Meteo forecast for the start hour; speech-to-search on Explore |
+| **Map without a Google key** (Thahseen) | ✅ | Leaflet + OpenStreetMap map, server-side Nominatim geocoding of typed addresses, draggable pin |
 | **Spelling-proof neighbourhoods** | ✅ | "R.S. Puram" = "R S Puram" = "RS Puram" for filtering; filter box suggests neighbourhoods that have upcoming events |
 | **"Popular" badge** | ✅ | 55+ RSVPs (≈ top fifth of the demo data) on cards and the detail page |
 | **Installable PWA** | ✅ | Web app manifest + icons; no service worker on purpose (no stale versions after a deploy) |
-| **Gemini resilience** | ✅ | Every AI call has a 12 s timeout and one retry on a fallback model when the main model is overloaded |
-| **Local dev without a GCP project** | ✅ | `npm run dev:local`: Firestore + Auth emulators, seeded demo data, API and web in one command |
+| **Gemini resilience** | ✅ | Every AI call has a 12 s timeout and one retry on a fallback model when the main model is overloaded; assist and search then fall back to a built-in rule-based assistant |
+| **Zero-config local mode** (Thahseen) | ✅ | `npm run dev` with no configuration: Firestore + Auth emulators, seeded demo board, photos on disk, demo account |
 
 ### Beyond the brief
 
@@ -72,8 +78,9 @@ covered by automated tests unless noted.
   each missing, and says so rather than failing.
 - **Automated verification** — `npm run verify --prefix backend` runs 134 service-level checks
   against the Firestore emulator (create/edit/ownership, RSVP transaction, expiry, calendar range,
-  neighbourhood matching, Snap-a-Poster date and warning rules). The full API flow, including
-  sign-in through the Auth emulator, was regression-tested by script before submission.
+  neighbourhood matching, Snap-a-Poster date and warning rules), plus 18 recommendation-scoring and
+  33 trending checks (`verify-intelligence.ts`, `verify-pulse.ts`). The full API flow, including
+  sign-in through the Auth emulator, check-in, Q&A and AI, was regression-tested by script.
 
 ### Google Cloud services actually used
 

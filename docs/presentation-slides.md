@@ -47,8 +47,13 @@
 - **"I'm Going"** RSVP counter — one per signed-in user, cancellable, counted in a Firestore transaction.
 - **Colour-coded category badges** · **neighbourhood search** with suggestions · **shareable link** per event
   (`/events/{id}`), native share, QR flyer, Google Calendar / iCal export.
-- Extras: **month calendar view**, **"Popular" badge** (55+ RSVPs), Explore **map**, **near-me** filter,
-  **insights dashboard**, organiser **edit / cancel / reactivate / delete**, dark mode, **installable on phones**.
+- Discovery: **Recommended for you** (Local Relevance Score with reasons), **Trending** (Event Pulse — recent
+  momentum), **"Popular" badge** (55+ RSVPs), **month calendar view**, Explore **map** (Google, or OpenStreetMap
+  with no key), **near-me** filter, **voice search**.
+- Community: **QR check-in** ("said yes" vs "showed up"), **neighbour points, levels & leaderboard**,
+  **Q&A** on each event, **save for later**, **event-day weather**.
+- Organisers: **edit / cancel / reactivate / delete**, map pin from the address + draggable pin,
+  **insights dashboard**; dark mode; **installable on phones**.
 
 ---
 
@@ -62,7 +67,10 @@
 - **AI assist**: rough note → clearer title, description, category, tags (user picks what to keep).
 - **AI search**: "sports this weekend in Gandhipuram" → filters applied on the board.
 - **Resilience**: every Gemini call has a timeout and **one retry on a fallback model** when the main one is
-  overloaded; AI is never required to post.
+  overloaded; assist and search then fall back to a **built-in rule-based assistant**, so they work even
+  with no key. AI is never required to post.
+- **Not ML, honestly labelled**: "Recommended for you" and "Trending" are transparent, configurable scores
+  (distance, interests, timing, freshness, engagement / recent growth) with the reasons shown to the user.
 
 ---
 
@@ -76,7 +84,7 @@
   | Compute | Cloud Run | Single Compute Engine VM (our first plan, Flask) | Scales to zero, managed HTTPS, no server upkeep |
   | Database | Firestore | SQLite on the VM / Cloud SQL | Managed, persistent across restarts, transactions for RSVPs |
   | Hosting | Cloud Run | App Engine | One container for API + app, same image locally |
-  | Maps | Google Maps Platform | Geoapify, Ola Maps, Photon | Best Indian sub-locality data; part of GCP |
+  | Maps | Google Maps Platform (+ OpenStreetMap fallback) | Geoapify, Ola Maps, Photon | Best Indian sub-locality data; part of GCP. With no key the app still shows a map (Leaflet/OSM) and finds pins via Nominatim, within its usage policy |
 - An early prototype kept events in server memory — data vanished on restart. That's why we moved to Firestore.
 
 ---
@@ -90,8 +98,9 @@
 - **Monitoring**: structured JSON logs in **Cloud Logging** (request IDs, AI retries/fallbacks, extraction
   outcomes); `/api/health` reports which integrations are live; **Cloud Run metrics dashboard, uptime check
   and alert** *(set up at deployment)*; budget alert on the billing account.
-- **Testing**: 134 automated service checks against the Firestore emulator + scripted API regression
-  (sign-in, create, RSVP, cancel, delete, AI) before every release.
+- **Testing**: 185 automated checks against the Firestore emulator (134 service, 18 recommendation scoring,
+  33 trending) + a scripted API regression (sign-in, create, RSVP, cancel, delete, check-in, Q&A, AI)
+  before every release. **Zero-config local mode** lets any teammate run the whole app with one command.
 
 ---
 

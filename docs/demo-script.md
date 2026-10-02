@@ -194,6 +194,16 @@ The category chip, the date chip and the keywords all set themselves.
 
 ---
 
+### 10b · Community features  *(40s)*
+
+- On **Home**, point at **Recommended for you** (each card says *why*) and **Trending** (fast-growing events).
+- Open the **Live now: Race Course Neighbours Meet & Walk** event → **Check in** with code **`NEARBY`**.
+  > "RSVPs tell you who said yes. Check-ins tell you who actually came — organisers see real turnout."
+- Show the **Q&A** thread and the **weather** card on the same page, then the **Community** leaderboard
+  (points for hosting, RSVPing and checking in).
+
+---
+
 ### 11 · My events  *(20s)*
 
 **My events** → created events with live RSVP counts, upcoming and past tabs, edit and

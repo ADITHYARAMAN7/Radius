@@ -65,26 +65,38 @@ Adhi's Flask version is a prototype; we only port ideas from it (see §6).
 
 ### Useful commands (from repo root)
 - `npm run install:all` — install root + backend + frontend (uses `cd`, so it never edits package.json)
-- `npm run dev:local` — **local dev with no GCP project**: Firestore + Auth emulators (project `demo-nearby`),
-  seeds demo data, runs API + web. Emulator UI on :4000. Needs Java 21 + global `firebase-tools`, and
-  `backend/.env` / `frontend/.env` set up as in README "Run locally with emulators". Data is in-memory.
-- `npm run dev` — run API (:8080) + web (:5173) together; Vite proxies `/api` to :8080.
+- `npm run dev` — **local mode (from main, zero config)**: with no project/credentials/emulator host in
+  `backend/.env`, it starts the Firestore + Auth emulators (project `demo-nearby-events`, data kept in
+  `.emulator-data/`), seeds the demo board, runs API (:8080) + web (:5173). Photos go to local disk; AI uses
+  Gemini if `GEMINI_API_KEY` is set, otherwise the built-in rule-based assistant. "Continue with the demo
+  account" on the sign-in page. Needs Java 21. `npm run dev:local` is an alias.
+- `npm run dev:cloud` — API + web against a real Google Cloud project (no emulators).
 - `npm run seed` / `npm run seed:clear` — demo data from `scripts/seed-events.ts`
-  (42 events: 34 upcoming + 8 expired, 15 Coimbatore neighborhoods incl. 5 Amrita/Ettimadai events)
+  (43 events: 35 upcoming incl. one always "live now" with check-in code `NEARBY`, + 8 expired;
+  15 Coimbatore neighbourhoods incl. 5 Amrita/Ettimadai events)
 - `npm run typecheck`, `npm run build`
-- `npm run verify --prefix backend` — backend checks script
+- `npm run verify --prefix backend` (134 checks), plus `npx tsx src/scripts/verify-intelligence.ts` (18) and
+  `npx tsx src/scripts/verify-pulse.ts` (33) from `backend/`
 - Full deployment guide: `docs/gcp-deployment.md`
 
-### Status (end of Oct 2, branch `suhas-dev`, PR open to `main`)
-- Typecheck + production build clean; `npm run verify --prefix backend` 134/134 against the emulators;
-  scripted API regression 38/38 (board, expiry, filters, create/edit/cancel/reactivate/delete, ownership,
-  RSVP/un-RSVP, share link, calendar, insights, AI assist/search, Snap-a-Poster).
-- All 4 must-haves and all 4 listed features work. Main's extras: login, edit/cancel/reactivate/delete,
+### Status (end of Oct 2, branch `suhas-dev` = main merged in, PR #2 open to `main`)
+- Typecheck + production build clean. verify 134/134, verify-intelligence 18/18, verify-pulse 33/33 against
+  the emulators; scripted API regression (board, expiry, filters, CRUD + ownership, RSVP, share, calendar,
+  insights, AI, plus main's recommended/trending/leaderboard/weather/Q&A/save/check-in/geocode).
+- All 4 must-haves and all 4 listed features work. Original extras: login, edit/cancel/reactivate/delete,
   Explore map, near-me filter, AI assist + AI search, insights, iCal/Google Calendar export, QR flyer, share
   menu, dark mode, My Events / My RSVPs / Profile.
-- Added on suhas-dev: local emulator setup (`npm run dev:local`), Snap-a-Poster (idea by Adhi), Places
-  autocomplete (needs Maps key; manual fallback), spelling-proof neighbourhood filter + suggestions, Popular
-  badge, Amrita/Ettimadai seed events (42 total), month calendar view, installable PWA, Gemini fallback model.
+- From main (Kanish, Thahseen): Recommended for you (Local Relevance Score), Trending (Event Pulse), QR
+  check-in, neighbour points + leaderboard (/community), Q&A, save for later, event-day weather (Open-Meteo),
+  map pins from the address (Nominatim, server-side) + draggable pin, Leaflet/OSM map without a Google key,
+  voice search, zero-config local mode with a rule-based AI fallback.
+- From suhas-dev: Snap-a-Poster (idea by Adhi; Gemini only), Places autocomplete (with a Maps key) feeding
+  the draggable pin, spelling-proof neighbourhood filter + suggestions, Popular badge, Amrita/Ettimadai seed
+  events, month calendar view, installable PWA, Gemini fallback model, deploy fixes ($BUILD_ID, TZ).
+- **Open security item (needs Kanish's OK):** `checkInCode` lives on the event document and
+  `firestore.rules` allows public reads of events, so anyone could read codes straight from Firestore. The
+  frontend never reads Firestore directly, so `allow read: if false;` on `/events` (or moving the code to a
+  private subcollection) closes it without breaking anything.
 - Docs updated to match: README, `docs/roadmap.md`, `docs/presentation-slides.md`, `docs/demo-script.md`.
   **Not yet reviewed:** `docs/cognizant-hackathon-report.md`, `docs/architecture*.md` may still contain old
   claims (e.g. Gemini 1.5) — check before submitting them.
@@ -132,6 +144,9 @@ Follow `docs/gcp-deployment.md`; deploy **this branch's code** (after Kanish mer
 4. **Storage**: create the bucket (`GCS_BUCKET`) if image upload is wanted.
 5. **Gemini key** → **Secret Manager** secret `gemini-api-key` (and `maintenance-token`); grant the Cloud Run
    service account *Secret Accessor*. Never a build arg, never committed.
+   **Quota:** Suhas's free AI Studio key hit "429 You exceeded your current quota" after a day of testing.
+   For the demo, use a key on the **free-trial project with billing linked** (usage comes out of the $300
+   credit), or `AI_PROVIDER=vertex` (no key; billed to the trial). Don't demo on a free-tier key.
 6. **Maps key**: enable **Maps JavaScript API** + **Places API (New)**; restrict the key by **HTTP referrer**
    (`http://localhost:5173/*` + the Cloud Run URL) and by **API**; set **daily quota caps** (~500/day Places);
    pass it as `_VITE_GOOGLE_MAPS_API_KEY`.
@@ -180,6 +195,12 @@ Follow `docs/gcp-deployment.md`; deploy **this branch's code** (after Kanish mer
   the slide: Geoapify (3,000 free credits/day, OSM-based, weaker Indian sub-localities), Ola Maps
   (India-focused, pricing changed Sept 2026), Photon (free, no SLA). Nominatim's usage policy forbids
   autocomplete — never use it for that.
+- (Oct 2, after merging main) **Fallbacks without a Google key are OpenStreetMap**: Leaflet + OSM tiles for the
+  map, and Nominatim for **one-off server-side geocoding** of a typed address (≤ 1 request/s, identifying
+  User-Agent, 24 h cache, only on "Find from address" or when an event is saved without a pin). That is
+  allowed by Nominatim's policy; autocomplete stays Google Places only.
+- AI fallback order: Gemini main model → `GEMINI_FALLBACK_MODEL` → built-in rule-based assistant (assist and
+  search only). **Snap-a-Poster is Gemini-only** — rules cannot read a poster and must never invent details.
 - Login gates posting and RSVP only; browsing and shared links stay public.
 
 ---
@@ -315,3 +336,17 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   **Still open (not fixed):** app display name ("Nearby-objects" vs "Nearby-Events"); report/architecture docs
   not re-checked; Places spellings need the real key; events are single-day only.
   PR `suhas-dev → main` opened for Kanish — do not merge without review.
+- Oct 2 (evening): **Merged `main` into `suhas-dev`** (Kanish: recommendations + trending; Thahseen: check-in,
+  points, Q&A, saved, weather, Nominatim pins + draggable pin, Leaflet fallback, voice search, local mode).
+  11 conflicting files resolved, mostly "keep both". Decisions: main's zero-config `npm run dev` replaces
+  my `.env`-based setup (`dev:local` is now an alias; my `install:all` fix kept); Places autocomplete feeds
+  main's EventLocationPin; one Maps loader; AI chain Gemini → fallback → rules, Snap-a-Poster Gemini-only.
+  Also fixed: main's package.json files had the `"nearby-objects": "file:.."` self-dependency (from Kanish's
+  `npm install --prefix`), removed; duplicate auth block in firebase.json; README errors (port 5000,
+  GCS_BUCKET_NAME, VITE_API_BASE_URL, 36 events, Gemini 1.5); verify test updated because createEvent now
+  geocodes missing pins. Tests: verify 134/134, intelligence 18/18, pulse 33/33, API regression 50/51 (the 1 =
+  Gemini free-tier quota 429, handled correctly). Suhas's local `.env` files trimmed to local-mode style
+  (Gemini key kept; backups in %TEMP%\claude\*.env.bak).
+  **Open:** check-in code readable via public Firestore rules (needs Kanish's OK to deny client reads);
+  `sanjay` branch looks superseded by main (ask Sanjay); `adhi` branch's admin/delete-request idea → future
+  moderation; no human browser click-through yet of the merged app.

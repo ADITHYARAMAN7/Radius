@@ -425,6 +425,9 @@ async function main(): Promise<void> {
       }),
       ORGANISER,
     );
+    // createEvent now geocodes a missing pin from the address, so clear it afterwards to
+    // model an address the geocoder could not place.
+    await db.collection('events').doc(unplaced.id).update({ latitude: null, longitude: null });
 
     const placedOnly = await listEvents({ ...centre, radiusKm: 50, pageSize: 60 });
     check(
