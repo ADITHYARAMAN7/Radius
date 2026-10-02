@@ -17,6 +17,8 @@ import { Avatar, Badge, Card, Panel, Separator } from '@/components/ui/Primitive
 import { CategoryBadge } from '@/components/events/CategoryBadge';
 import { RsvpButton } from '@/components/events/RsvpButton';
 import { CopyLinkButton, ShareMenu } from '@/components/events/ShareMenu';
+import { CalendarExport } from '@/components/events/CalendarExport';
+import { EventQrCode } from '@/components/events/EventQrCode';
 import { EventCard } from '@/components/events/EventCard';
 import { EventMap } from '@/components/events/EventMap';
 import { ErrorState, EventDetailSkeleton } from '@/components/common/States';
@@ -501,6 +503,19 @@ export default function EventDetails() {
               <div className="grid grid-cols-2 gap-2">
                 <ShareMenu event={event} />
                 <CopyLinkButton eventId={event.id} />
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <EventQrCode event={event} />
+              </div>
+
+              <Separator />
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+                  Calendar Sync
+                </p>
+                <CalendarExport event={event} />
               </div>
 
               <Separator />
