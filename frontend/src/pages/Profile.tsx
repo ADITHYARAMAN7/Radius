@@ -21,7 +21,7 @@ export default function Profile() {
   const [counts, setCounts] = useState<{ created: number; attending: number; rsvps: number } | null>(null);
 
   useEffect(() => {
-    document.title = 'Profile — Nearby-objects';
+    document.title = 'Profile — Nearby-Events';
   }, []);
 
   // Points move whenever the user RSVPs or checks in elsewhere, so read them fresh.

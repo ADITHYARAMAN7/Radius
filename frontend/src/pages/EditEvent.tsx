@@ -38,7 +38,7 @@ export default function EditEvent() {
   }, [id]);
 
   useEffect(() => {
-    document.title = event ? `Editing ${event.title} — Nearby-objects` : 'Edit event — Nearby-objects';
+    document.title = event ? `Editing ${event.title} — Nearby-Events` : 'Edit event — Nearby-Events';
   }, [event]);
 
   if (loading) return <PageSkeleton label="Loading your event" />;

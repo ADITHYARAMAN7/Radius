@@ -29,6 +29,7 @@ import {
 } from '@/lib/types';
 import { cn, todayAsInputValue } from '@/lib/utils';
 import { isMapsConfigured } from '@/lib/maps';
+import { AddressSuggest } from './AddressSuggest';
 import { PlaceAutocomplete, type PickedPlace } from './PlaceAutocomplete';
 import { SnapPoster } from './SnapPoster';
 
@@ -171,7 +172,7 @@ type AiMark = 'ai' | 'suggested' | 'maps';
 const AI_HINTS: Record<AiMark, string> = {
   ai: 'Filled by AI, please check.',
   suggested: 'Suggested end time (start + 2 hours), please check.',
-  maps: 'Filled from Google Maps, please check.',
+  maps: 'Filled from the address search, please check.',
 };
 
 /** Highlights a field the AI filled until the user edits it. */
@@ -1062,14 +1063,19 @@ export function EventForm({
             onUnavailable={() => setPlacesMode(false)}
           />
         ) : (
-          <Input
+          // No Google key: OpenStreetMap suggestions as you type, same fill-in behaviour.
+          <AddressSuggest
             id="field-address"
             label="Street address"
             required
             value={form.address}
-            onChange={(changeEvent) => set('address', changeEvent.target.value)}
+            onChange={(text) => set('address', text)}
+            onPick={applyPlace}
             error={errors.address}
-            {...aiProps('address')}
+            {...aiProps(
+              'address',
+              'Start typing a place or street and pick a suggestion: it fills the neighbourhood, city and map pin.',
+            )}
             placeholder="VOC Park, Dr Nanjappa Road, Gandhipuram, Coimbatore 641018"
           />
         )}

@@ -38,7 +38,7 @@ export default function MyRsvps() {
   );
 
   useEffect(() => {
-    document.title = "Events I'm attending — Nearby-objects";
+    document.title = "Events I'm attending — Nearby-Events";
   }, []);
 
   useEffect(() => {

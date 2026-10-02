@@ -11,6 +11,7 @@ import type {
   EventFormPayload,
   EventRecord,
   ExtractionResult,
+  PlaceSuggestion,
   EventWeather,
   GeocodeResult,
   InsightsPayload,
@@ -129,7 +130,7 @@ async function requestOnce<T>(path: string, options: RequestOptions = {}): Promi
     throw new ApiError(
       0,
       'NETWORK',
-      'We could not reach Nearby-objects. Check your connection and try again.',
+      'We could not reach Nearby-Events. Check your connection and try again.',
     );
   }
 
@@ -268,6 +269,26 @@ export const api = {
   myRsvps: () => request<{ events: EventRecord[]; total: number }>('/me/rsvps', { auth: true }),
 
   categories: () => request<{ categories: CategoryCount[] }>('/categories'),
+
+  /** Address suggestions while typing, when there is no Google Maps key (OpenStreetMap / Photon). */
+  placeSuggestions: (query: string, signal?: AbortSignal) =>
+    request<{ suggestions: PlaceSuggestion[] }>(`/places/suggest?q=${encodeURIComponent(query)}`, { auth: true, signal }),
+
+  /** Neighbourhood + city for a picked suggestion. */
+  resolvePlace: (suggestion: PlaceSuggestion) =>
+    request<{ place: { neighborhood: string; city: string } }>('/places/resolve', {
+      method: 'POST',
+      body: {
+        latitude: suggestion.latitude,
+        longitude: suggestion.longitude,
+        name: suggestion.name,
+        kind: suggestion.kind,
+        city: suggestion.city,
+        county: suggestion.county,
+        locality: suggestion.locality,
+      },
+      auth: true,
+    }),
 
   /** Neighbourhoods with upcoming events, for the filter's suggestions. */
   neighborhoods: () => request<{ neighborhoods: Array<{ name: string; count: number }> }>('/neighborhoods'),

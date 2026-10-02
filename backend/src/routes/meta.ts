@@ -6,8 +6,9 @@ import { localStackHealth } from '../config/localStack';
 import { logger } from '../config/logger';
 import { requireAuth } from '../middleware/auth';
 import { AppError, asyncHandler } from '../middleware/error';
-import { geocodeSchema } from '../middleware/validate';
+import { geocodeSchema, placeResolveSchema, placeSuggestSchema } from '../middleware/validate';
 import { geocode } from '../services/geocodeService';
+import { resolvePlace, suggestPlaces } from '../services/placeSearchService';
 import { expirePastEvents } from '../services/eventService';
 import { POINTS, getLeaderboard } from '../services/gamificationService';
 import { getCategoryCounts, getInsights, getNeighborhoodOptions } from '../services/statsService';
@@ -109,6 +110,29 @@ metaRouter.post(
     const input = geocodeSchema.parse(req.body);
     const result = await geocode(input);
     res.json({ result });
+  }),
+);
+
+/**
+ * GET /api/places/suggest?q= — address suggestions as the organiser types, used when no
+ * Google Maps key is configured (Photon / OpenStreetMap). Signed in only, like /geocode.
+ */
+metaRouter.get(
+  '/places/suggest',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const { q } = placeSuggestSchema.parse(req.query);
+    res.json({ suggestions: await suggestPlaces(q) });
+  }),
+);
+
+/** POST /api/places/resolve — neighbourhood + city for the suggestion the organiser picked. */
+metaRouter.post(
+  '/places/resolve',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const input = placeResolveSchema.parse(req.body);
+    res.json({ place: await resolvePlace(input) });
   }),
 );
 

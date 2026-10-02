@@ -82,7 +82,7 @@ export default function MyEvents() {
   const [tab, setTab] = useState<Tab>('upcoming');
 
   useEffect(() => {
-    document.title = 'My events — Nearby-objects';
+    document.title = 'My events — Nearby-Events';
   }, []);
 
   const { upcoming, past, totalRsvps } = useMemo(() => {

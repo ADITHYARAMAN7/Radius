@@ -186,6 +186,22 @@ export const checkInSchema = z.object({
   code: z.string().trim().min(4, 'Enter the check-in code.').max(12, 'That code is too long.'),
 });
 
+/** Address suggestions while typing (no Google key). */
+export const placeSuggestSchema = z.object({
+  q: trimmed(100).min(3, 'Type at least 3 characters.'),
+});
+
+/** The suggestion the organiser picked, to work out its neighbourhood and city. */
+export const placeResolveSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  name: trimmed(200),
+  kind: trimmed(60).optional().default(''),
+  city: trimmed(100).optional().default(''),
+  county: trimmed(100).optional().default(''),
+  locality: trimmed(100).optional().default(''),
+});
+
 export const geocodeSchema = z
   .object({
     address: trimmed(300).optional().default(''),

@@ -130,7 +130,7 @@ export default function Explore() {
   const debouncedSearch = useDebounced(filters.search, 350);
 
   useEffect(() => {
-    document.title = 'Explore events — Nearby-objects';
+    document.title = 'Explore events — Nearby-Events';
   }, []);
 
   useEffect(() => {

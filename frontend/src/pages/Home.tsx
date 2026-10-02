@@ -50,7 +50,7 @@ function Hero() {
 
           <dl className="mt-10 grid max-w-lg animate-fade-up grid-cols-3 gap-6 [animation-delay:240ms]">
             {[
-              { label: 'Neighbourhoods', value: 'Coimbatore', icon: MapPin },
+              { label: 'City', value: 'Coimbatore', icon: MapPin },
               { label: 'Categories', value: '8 kinds', icon: Flame },
               { label: 'Always', value: 'Up to date', icon: CalendarDays },
             ].map((stat) => (
@@ -272,7 +272,7 @@ export default function Home() {
   const [boardHasEvents, setBoardHasEvents] = useState<boolean | null>(null);
 
   useEffect(() => {
-    document.title = 'Nearby-objects — Discover. Connect. Participate.';
+    document.title = 'Nearby-Events — Discover. Connect. Participate.';
   }, []);
 
   const onPopularResolved = useCallback((hasEvents: boolean) => setBoardHasEvents(hasEvents), []);

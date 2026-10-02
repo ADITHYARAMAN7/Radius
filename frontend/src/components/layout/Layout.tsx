@@ -61,7 +61,7 @@ function Footer() {
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white">
                 <MapPin className="h-[1.125rem] w-[1.125rem]" aria-hidden="true" />
               </span>
-              Nearby-objects
+              Nearby-Events
             </div>
 
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-ink-soft">
@@ -107,7 +107,7 @@ function Footer() {
         </div>
 
         <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-border pt-6 text-xs text-ink-muted sm:flex-row sm:items-center">
-          <p>© {year} Nearby-objects · Cognizant NPN GCP Hackathon prototype</p>
+          <p>© {year} Nearby-Events · Cognizant NPN GCP Hackathon prototype</p>
           <p className="flex items-center gap-1.5">
             <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />
             Cloud Run · Firestore · Cloud Storage · Gemini · Maps Platform

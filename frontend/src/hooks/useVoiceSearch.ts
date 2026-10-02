@@ -78,7 +78,8 @@ export function useVoiceSearch({ onInterim, onResult, onError }: VoiceSearchOpti
     if (!Recognition || recognitionRef.current) return;
 
     const recognition = new Recognition();
-    recognition.lang = navigator.language || 'en-IN';
+    // Indian English recognises local names ("Gandhipuram", "Peelamedu") far better than en-US.
+    recognition.lang = 'en-IN';
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
     recognition.continuous = false;
@@ -102,11 +103,15 @@ export function useVoiceSearch({ onInterim, onResult, onError }: VoiceSearchOpti
       // "no-speech" and "aborted" are the user changing their mind, not failures.
       if (event.error === 'no-speech' || event.error === 'aborted') return;
 
-      handlers.current.onError?.(
-        event.error === 'not-allowed' || event.error === 'service-not-allowed'
-          ? 'Microphone access was declined. Allow it in your browser to search by voice.'
-          : 'We could not hear that. Please try again.',
-      );
+      const messages: Record<string, string> = {
+        'not-allowed': 'Microphone access was declined. Allow it in your browser to search by voice.',
+        'service-not-allowed': 'Microphone access was declined. Allow it in your browser to search by voice.',
+        'audio-capture': 'No microphone was found. Plug one in or type your search instead.',
+        // Chrome and Edge send the audio to an online speech service.
+        network: 'Voice search needs an internet connection. Check your connection or type your search.',
+        'language-not-supported': 'Voice search is not available for this language in your browser.',
+      };
+      handlers.current.onError?.(messages[event.error] ?? 'We could not hear that. Please try again.');
     };
 
     recognition.onend = () => {

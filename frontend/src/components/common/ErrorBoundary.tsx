@@ -42,7 +42,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
           <h1 className="mt-5 font-display text-2xl font-bold text-ink">Something broke</h1>
 
           <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-            Nearby-objects hit an unexpected error and could not finish drawing the page. Reloading
+            Nearby-Events hit an unexpected error and could not finish drawing the page. Reloading
             usually clears it.
           </p>
 

@@ -20,7 +20,7 @@ export default function Community() {
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
-    document.title = 'Community — Nearby-objects';
+    document.title = 'Community — Nearby-Events';
   }, []);
 
   useEffect(() => {

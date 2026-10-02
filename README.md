@@ -42,7 +42,8 @@ It replaces the fragmentation and clutter of physical corkboards and generic soc
 - 📈 **Trending / Event Pulse**: events with fast-growing recent engagement, labelled Trending / Growing / Steady (`GET /api/events/trending`).
 - 🔥 **"Popular" Badge**: cards and event pages mark events with 55+ RSVPs.
 - 🗺️ **Interactive Maps View**: Google Maps with a key, otherwise a Leaflet/OpenStreetMap map — category-specific pins and location popups either way.
-- 📍 **Google Places Autocomplete**: with a Maps key, the address field suggests real places and fills the neighbourhood, city and map pin (Places API New); without a key the form keeps manual fields.
+- 📍 **Address suggestions as you type**: with a Maps key, Google Places (API New); without one, OpenStreetMap suggestions via Photon (`GET /api/places/suggest`, server-side, cached). Picking a place fills the venue, address, neighbourhood (snapped to the board's spelling, e.g. "R.S. Puram"), city and map pin either way.
+- 🎙️ **Voice search** in Chrome/Edge (Web Speech API, Indian English; needs internet and microphone permission). Hidden in browsers without speech support.
 - 📱 **Installable on Phones**: web app manifest and icons for "Add to Home Screen".
 - 🖼️ **Cloud Storage Cover Photos**: Secure image upload to Google Cloud Storage with size limits, validation, and CDN caching.
 - 🔎 **Natural Language Search Intent AI**: Conversational natural-language query parsing (`POST /api/ai/search`) powered by Gemini.

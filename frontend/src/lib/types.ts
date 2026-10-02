@@ -309,6 +309,18 @@ export interface TrendingEvent extends EventRecord {
   pulseReasons: string[];
 }
 
+/** An address suggestion from /api/places/suggest (OpenStreetMap, used without a Google key). */
+export interface PlaceSuggestion {
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  kind: string;
+  city: string;
+  county: string;
+  locality: string;
+}
+
 export interface GeocodeResult {
   latitude: number;
   longitude: number;

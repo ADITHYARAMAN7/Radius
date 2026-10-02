@@ -198,7 +198,11 @@ Follow `docs/gcp-deployment.md`; deploy **this branch's code** (after Kanish mer
 - (Oct 2, after merging main) **Fallbacks without a Google key are OpenStreetMap**: Leaflet + OSM tiles for the
   map, and Nominatim for **one-off server-side geocoding** of a typed address (≤ 1 request/s, identifying
   User-Agent, 24 h cache, only on "Find from address" or when an event is saved without a pin). That is
-  allowed by Nominatim's policy; autocomplete stays Google Places only.
+  allowed by Nominatim's policy. Autocomplete is Google Places with a key; **without a key it is Photon**
+  (komoot's OpenStreetMap search, which allows search-as-you-type under fair use): `/api/places/suggest`
+  (server-side, 10 min cache, ≥ 3 chars, 300 ms debounce in the browser) and `/api/places/resolve` (one reverse
+  lookup per pick for the suburb). Taluk names (Perur, Podanur) are mapped to "Coimbatore"; names are snapped
+  to the board's existing spellings. Never use Nominatim for autocomplete.
 - AI fallback order: Gemini main model → `GEMINI_FALLBACK_MODEL` → built-in rule-based assistant (assist and
   search only). **Snap-a-Poster is Gemini-only** — rules cannot read a poster and must never invent details.
 - Login gates posting and RSVP only; browsing and shared links stay public.
@@ -350,3 +354,11 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   **Open:** check-in code readable via public Firestore rules (needs Kanish's OK to deny client reads);
   `sanjay` branch looks superseded by main (ask Sanjay); `adhi` branch's admin/delete-request idea → future
   moderation; no human browser click-through yet of the merged app.
+- Oct 2 (night): **Full browser QA + local fixes.** Real-Chrome test suite (95 checks) → 90 pass; the 5 that
+  don't are all key/account related: Google map + Places (no Maps key yet), Google sign-in (popup, needs the
+  real Firebase project), Snap-a-Poster ×2 (Gemini free-tier quota 429). Added: OpenStreetMap address
+  suggestions without a Google key (Photon, `/api/places/suggest` + `/resolve`, `AddressSuggest.tsx`) — tested
+  Brookefields → Ram Nagar, Amrita → Ettimadai, RS Puram → "R.S. Puram"; voice search set to `en-IN` with
+  clear messages for no internet / mic blocked / no mic (tested with a simulated microphone); visible app name
+  is now **Nearby-Events** everywhere; home stat "City: Coimbatore". 16/16 new UI checks pass.
+  **Next:** create the Maps key (then test Google map + Places live), working Gemini key, then cloud deployment.

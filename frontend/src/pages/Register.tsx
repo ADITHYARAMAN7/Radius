@@ -37,7 +37,7 @@ export default function Register() {
   const next = safeRedirectPath(searchParams.get('next'));
 
   useEffect(() => {
-    document.title = 'Create an account — Nearby-objects';
+    document.title = 'Create an account — Nearby-Events';
   }, []);
 
   if (!configured) return <AuthNotConfigured />;
@@ -70,7 +70,7 @@ export default function Register() {
     setBusy('email');
     try {
       await register(email.trim(), password, displayName.trim());
-      toast.success('Account created', 'Welcome to Nearby-objects.');
+      toast.success('Account created', 'Welcome to Nearby-Events.');
       navigate(next, { replace: true });
     } catch (caught) {
       setError((caught as Error).message);
