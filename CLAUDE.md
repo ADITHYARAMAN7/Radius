@@ -380,3 +380,23 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   Firebase setup: web config + service-account key), lock the Maps key, Firestore rule for check-in codes
   (Kanish), billing (card/credits) for Cloud Run + Storage + Scheduler + monitoring, deck/video/report.
   **Next: cloud integration** (deployment checklist in §3).
+- Oct 3 (night): **DEPLOYED to Google Cloud.** Live: **https://nearby-events-x2gneiue7a-el.a.run.app** (also
+  https://nearby-events-830388660133.asia-south1.run.app). Project `nearby-events-510418` (billing = $300 trial).
+  Done: $25 budget alert (50/90/100 %); `scripts/gcp-setup.sh` (APIs, Artifact Registry `nearby-events`, bucket
+  `nearby-events-510418-event-images`, runtime SA `nearby-events-run`, secrets); Firebase added; Firestore
+  (Native, asia-south1) + rules + indexes deployed; Auth: Email/Password + Google on; web app
+  `nearby-events-web`; real DB seeded (43 events, 18 profiles); Cloud Run in asia-south1 with
+  **AI_PROVIDER=vertex, VERTEX_LOCATION=global** (Flash-Lite is only served from `global` on Vertex — not
+  us-central1/asia-south1; no Gemini key in prod); Cloud Run URLs added to Firebase authorized domains; **Maps
+  key locked** to localhost:5173 + both run.app URLs (other sites get PERMISSION_DENIED); Cloud Scheduler
+  `expire-events` hourly (Asia/Kolkata), verified 200; uptime check "Nearby-Events health" (/api/health, 5 min)
+  + alert policy emailing Suhas. Note: this project builds with the **compute default SA**
+  (`830388660133-compute@…`), which needed run.admin, iam.serviceAccountUser, artifactregistry.writer,
+  logging.logWriter, storage.objectViewer. Live smoke test in Chrome **16/16** (Google map, Places pick, photo
+  to Cloud Storage, real sign-up, publish, RSVP, check-in NEARBY, Snap-a-Poster via Vertex, delete) — test
+  user/event deleted afterwards. **Redeploy:** `.\scripts\deploy.ps1` (reads gitignored
+  `frontend/.env.production`; ~5 min). Gotchas: Git Bash mangles paths like `/api/health` in gcloud args
+  (use PowerShell); `gcloud alpha` isn't installed (use REST).
+  **Still to do:** Suhas tests real "Continue with Google" on the live URL (can't be automated); re-seed the
+  real DB on the morning of Oct 6 and set `--min-instances=1` for the demo; check-in-code Firestore rule
+  (Kanish); merge PR #3; slides / video / report; monitoring screenshots for the slides.

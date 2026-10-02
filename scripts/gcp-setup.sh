@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Nearby-objects — one-time Google Cloud provisioning.
+# Nearby-Events — one-time Google Cloud provisioning.
 #
 # Idempotent: every step checks before it creates, so re-running after a failure is
 # safe and will not duplicate anything.
@@ -15,8 +15,8 @@ set -euo pipefail
 
 PROJECT_ID="${PROJECT_ID:-}"
 REGION="${REGION:-asia-south1}"
-SERVICE="${SERVICE:-nearby-objects}"
-REPO="${REPO:-nearby-objects}"
+SERVICE="${SERVICE:-nearby-events}"
+REPO="${REPO:-nearby-events}"
 BUCKET="${BUCKET:-${PROJECT_ID}-event-images}"
 RUNTIME_SA="${SERVICE}-run"
 
