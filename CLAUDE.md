@@ -70,7 +70,7 @@ Adhi's Flask version is a prototype; we only port ideas from it (see §6).
   `backend/.env` / `frontend/.env` set up as in README "Run locally with emulators". Data is in-memory.
 - `npm run dev` — run API (:8080) + web (:5173) together; Vite proxies `/api` to :8080.
 - `npm run seed` / `npm run seed:clear` — demo data from `scripts/seed-events.ts`
-  (36 events: 29 upcoming + 7 expired, 15 Coimbatore neighborhoods)
+  (42 events: 34 upcoming + 8 expired, 15 Coimbatore neighborhoods incl. 5 Amrita/Ettimadai events)
 - `npm run typecheck`, `npm run build`
 - `npm run verify --prefix backend` — backend checks script
 - Full deployment guide: `docs/gcp-deployment.md`
@@ -242,3 +242,10 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   **Deploy note:** deploy this branch, or run `npm run seed:clear` after deploying, so stored keys use placeKey.
   **Tonight with the key:** pick each seed neighbourhood in the autocomplete and align any spelling that differs.
   Next: feature 4 (Popular badge + Amrita events).
+- Oct 2: **Feature 4 done.** "Popular" badge: `POPULAR_RSVP_THRESHOLD = 55` in `frontend/src/lib/utils.ts`
+  (+ `isPopular()`, active events only) → 7 of 34 upcoming seed events (21%); 25 would have marked 93%.
+  On cards it replaces the bottom-right RSVP count with an amber "🔥 Popular · N"; on the details page it sits
+  next to the category badge. Seed: +5 upcoming Amrita/Ettimadai events (two on the same day, +3 days) and
+  1 past clean-up → 42 events (34 upcoming + 8 past), 15 neighbourhoods. All seed events pass the form's
+  validation rules; seed:clear + seed verified on the emulator (no duplicates). verify 123/123.
+  Next: feature 5 (month calendar view).

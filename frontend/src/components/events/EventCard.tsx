@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { CalendarDays, Clock, MapPin, Navigation, Users } from 'lucide-react';
+import { CalendarDays, Clock, Flame, MapPin, Navigation, Users } from 'lucide-react';
 import { Badge, Card } from '@/components/ui/Primitives';
 import { ButtonLink } from '@/components/ui/Button';
 import { CategoryBadge, CategoryIcon } from './CategoryBadge';
@@ -13,6 +13,7 @@ import {
   formatRsvpCount,
   formatTimeRange,
   hasFinished,
+  isPopular,
   isHappeningNow,
 } from '@/lib/utils';
 import type { EventRecord } from '@/lib/types';
@@ -105,13 +106,27 @@ export function EventCard({
           )}
         </div>
 
-        {/* RSVP count sits on the image so it reads at a glance while scanning the grid. */}
+        {/*
+          RSVP count sits on the image so it reads at a glance while scanning the grid.
+          Popular events show it as "Popular · N" in amber, which keeps the busy top-left
+          corner (category, live, status) as it is.
+        */}
         <div className="absolute bottom-3 right-3">
-          <Badge tone="neutral" size="sm" className="bg-surface/95 backdrop-blur">
-            <Users className="h-3 w-3" aria-hidden="true" />
-            <span className="tabular-nums">{event.rsvpCount}</span>
-            <span className="sr-only">{formatRsvpCount(event.rsvpCount)}</span>
-          </Badge>
+          {isPopular(event) ? (
+            <Badge tone="warning" size="sm" className="bg-warning-soft/95 backdrop-blur">
+              <Flame className="h-3 w-3" aria-hidden="true" />
+              Popular
+              <span aria-hidden="true">·</span>
+              <span className="tabular-nums">{event.rsvpCount}</span>
+              <span className="sr-only">{formatRsvpCount(event.rsvpCount)}</span>
+            </Badge>
+          ) : (
+            <Badge tone="neutral" size="sm" className="bg-surface/95 backdrop-blur">
+              <Users className="h-3 w-3" aria-hidden="true" />
+              <span className="tabular-nums">{event.rsvpCount}</span>
+              <span className="sr-only">{formatRsvpCount(event.rsvpCount)}</span>
+            </Badge>
+          )}
         </div>
       </div>
 

@@ -68,7 +68,7 @@ Nearby-Events/
 │   ├── package.json
 │   └── vite.config.ts
 ├── scripts/
-│   └── seed-events.ts        # 36 realistic demo events (upcoming & expired)
+│   └── seed-events.ts        # 42 realistic demo events (upcoming & expired)
 ├── docs/                     # Hackathon documentation & diagrams
 │   ├── cognizant-hackathon-report.md  # 5-page submission report
 │   ├── presentation-slides.md         # 10-slide ready presentation deck
@@ -102,7 +102,7 @@ cd Nearby-Events
 npm run install:all
 ```
 
-### 3. Seed Realistic Demo Data (36 Events)
+### 3. Seed Realistic Demo Data (42 Events)
 ```bash
 npm run seed          # add/refresh the demo events
 npm run seed:clear    # remove previously seeded events first
@@ -147,7 +147,7 @@ The project id must be the same in both files, or the API rejects sign-in tokens
 ```powershell
 npm run dev:local
 ```
-This starts the Firestore + Auth emulators, seeds the 36 demo events, then runs the API (:8080) and web app
+This starts the Firestore + Auth emulators, seeds the 42 demo events, then runs the API (:8080) and web app
 (:5173). Open http://localhost:5173. Emulator UI (browse data and test users): http://localhost:4000.
 Press `Ctrl+C` to stop. Emulator data lives in memory, so events you create disappear on stop and the next
 start reseeds fresh demo data.
@@ -162,7 +162,7 @@ and AI features until you add `GEMINI_API_KEY`. Everything else works.
 
 ## 📊 Breadth of Sample Data
 
-The platform comes with a pre-configured seed generator in `scripts/seed-events.ts` providing **36 realistic community events**:
+The platform comes with a pre-configured seed generator in `scripts/seed-events.ts` providing **42 realistic community events** (34 upcoming, 8 past) across 15 Coimbatore neighbourhoods, including 5 at Amrita Vishwa Vidyapeetham, Ettimadai:
 - **Sports**: Pickup soccer, 3v3 basketball, sunset yoga, 5K fun run.
 - **Music**: Jazz in the park, acoustic open mic, indie indie showcase.
 - **Food**: Taco crawl, farmers market brunch, artisan sourdough workshop.
