@@ -12,20 +12,30 @@
 
 **Nearby-Events** is a cloud-native digital community bulletin board designed to help local residents discover, post, share, and RSVP to neighborhood events, garage sales, sports games, and meetups. 
 
-Powered by **Google Cloud Run**, **Cloud Firestore**, **Cloud Storage**, and **Gemini 1.5 Flash**, it solves the fragmentation and clutter of physical bulletin boards and generic social feeds.
+Powered by **Google Cloud Run**, **Cloud Firestore**, **Firebase Auth**, **Cloud Storage**, **Gemini** (default model `gemini-3.8-flash`) and **Google Maps Platform**, it replaces scattered paper notices and WhatsApp forwards with one searchable, always-current board.
 
 ---
 
-## 🚀 Key Features (Use Case 5 Requirements)
+## 🚀 Key Features
 
-- 🗂️ **Grid Board Layout**: Clean, modern card grid showing all upcoming community gatherings.
-- ⏱️ **Automatic Date Sorting**: Events happening next appear first at the top-left using compound indexed Firestore queries (`date ASC, time ASC`).
-- 🧹 **Automatic Expiration Logic**: Past events older than today are automatically flagged/hidden from active feeds and viewable in a dedicated past events archive.
-- 👍 **"I'm Going" RSVP Counter**: 1-click attendance button on every event card with live optimistic count updates and duplicate prevention.
-- 🏷️ **Color-Coded Category Badges**: Visual tags for **Sports**, **Music**, **Food**, **Yard Sale**, **Technology**, **Education**, and **Community**.
-- 📍 **Neighborhood Search & Interactive Map**: Filter events instantly by neighborhood name, city, or browse via interactive Leaflet/Google Maps view with custom category pins.
-- 🔗 **Shareable Deep Links**: Direct URL per event (`/events/:id`) with 1-click clipboard copy and native mobile Web Share API support.
-- 🤖 **Gemini 1.5 AI Event Assistant**: Generates engaging titles, rich descriptions, and smart tags from a simple 1-line note.
+### Use Case 5 requirements
+- 🗂️ **Card grid board**: every upcoming event as a card with title, date/time, location and description.
+- 📝 **Post form**: name, date/time, venue and address, neighbourhood, city and description, validated on the client and again on the server.
+- ⏱️ **Date sorting**: the next event is top-left; Firestore orders by the event's start time (`startsAt ASC`).
+- 🧹 **Automatic expiration**: an event leaves the board as soon as its end time passes; a protected maintenance endpoint (for Cloud Scheduler) marks old events `EXPIRED`, and they stay viewable under "Past / Expired".
+- 👍 **"I'm Going" RSVP counter**: one RSVP per signed-in user, cancellable, counted in a Firestore transaction.
+- 🏷️ **Colour-coded category badges**: Sports, Music, Food, Yard Sale, Community, Education, Technology, Other.
+- 📍 **Search by neighbourhood**: free-text filter with suggestions of the neighbourhoods that have upcoming events; spelling-proof matching ("R.S. Puram" = "R S Puram").
+- 🔗 **Shareable links**: every event has its own URL (`/events/:id`) with copy-link, native share and a printable QR code.
+
+### Added on top
+- 📸 **Snap-a-Poster** *(idea by Adhi)*: upload a poster photo or paste a forwarded WhatsApp message; Gemini pre-fills the post form for the organiser to check. Relative dates ("this Saturday 7pm") are resolved in the user's timezone, nothing is invented, and nothing is posted automatically.
+- 🗓️ **Month calendar view** on Explore (List · Map · Calendar): event counts and category dots per day, click a day to see its events, shareable `?view=calendar&day=…` link.
+- 🔥 **"Popular" badge** on events with 55+ RSVPs.
+- 🗺️ **Google Places autocomplete** for the address (fills neighbourhood, city and map pin) — switches on with a Maps key; without one the form keeps manual fields.
+- 🤖 **AI assist and AI search** (Gemini): tidy up a rough description; type "sports this weekend in Gandhipuram" to set the filters. All AI calls retry once on a fallback model when the main one is overloaded.
+- 🧭 **Explore map** (with a Maps key), **near-me** distance filter (browser location), **insights dashboard**, **Google Calendar / iCal export**, **edit / cancel / reactivate / delete** for organisers, **My Events / My RSVPs / Profile**, **dark mode**.
+- 📱 **Installable on phones** ("Add to Home Screen" via a web app manifest).
 
 ---
 
@@ -38,7 +48,8 @@ Powered by **Google Cloud Run**, **Cloud Firestore**, **Cloud Storage**, and **G
 | **Compute** | **Google Cloud Run** | Scalable, containerized Node.js/TypeScript backend API. |
 | **Database** | **Cloud Firestore** | Real-time NoSQL document database for Events, RSVPs, and Users. |
 | **Storage** | **Google Cloud Storage** | Secure, CDN-cached bucket for event cover photos and media. |
-| **Generative AI** | **Vertex AI / Gemini 1.5** | AI Event Assistant for description and tag auto-generation. |
+| **Generative AI** | **Gemini API / Vertex AI** | Snap-a-Poster extraction, AI assist and AI search (`gemini-3.8-flash`, fallback `gemini-3.5-flash`). |
+| **Maps** | **Google Maps Platform** | Explore map, event map, Places autocomplete for addresses. |
 | **Authentication** | **Firebase Auth** | User authentication with secure JWT tokens and role management. |
 | **Logging & Monitoring** | **Google Cloud Logging** | Structured JSON logging with request tracing. |
 
@@ -59,7 +70,7 @@ Nearby-Events/
 │   │   └── index.ts          # Server entry point
 │   ├── package.json
 │   └── tsconfig.json
-├── frontend/                 # React 18 + Vite + Tailwind CSS + Leaflet
+├── frontend/                 # React 18 + Vite + Tailwind CSS + Google Maps JS API
 │   ├── src/
 │   │   ├── components/       # EventCard, EventMap, EventFilters, EventForm
 │   │   ├── context/          # Auth context and state providers
@@ -86,6 +97,10 @@ Nearby-Events/
 ---
 
 ## 🛠️ Quick Start & Running Locally
+
+> **No Google Cloud project yet?** Skip to [Run locally with emulators](#run-locally-with-emulators-no-google-cloud-project-needed) —
+> one command (`npm run dev:local`) runs everything on your laptop. The steps directly below assume a real
+> Firebase project and service account (see `docs/gcp-deployment.md`).
 
 ### Prerequisites
 - Node.js 20+ & npm
@@ -163,14 +178,16 @@ and AI features until you add `GEMINI_API_KEY`. Everything else works.
 ## 📊 Breadth of Sample Data
 
 The platform comes with a pre-configured seed generator in `scripts/seed-events.ts` providing **42 realistic community events** (34 upcoming, 8 past) across 15 Coimbatore neighbourhoods, including 5 at Amrita Vishwa Vidyapeetham, Ettimadai:
-- **Sports**: Pickup soccer, 3v3 basketball, sunset yoga, 5K fun run.
-- **Music**: Jazz in the park, acoustic open mic, indie indie showcase.
-- **Food**: Taco crawl, farmers market brunch, artisan sourdough workshop.
-- **Yard Sale**: Multi-family estate sale, neighborhood book exchange, vintage vinyl swap.
-- **Technology**: Local AI hack night, robotics demo, web dev meetup.
-- **Education**: Urban gardening 101, local history walking tour.
-- **Community**: Park cleanup drive, neighborhood association townhall.
-- **Expired Events**: Dedicated dataset to verify automatic expiration handling.
+- **Sports**: 7-a-side football at VOC Grounds, badminton doubles ladder, Race Course 5K run, rooftop yoga, inter-college 3v3 basketball.
+- **Music**: acoustic open mic, Carnatic & fusion night, community choir, vinyl & jazz listening lounge, campus cultural night.
+- **Food**: organic farmers market & tiffin stalls, Kongunadu cooking masterclass, heritage street-food walk, sourdough & coffee pop-up, hostel food stall day.
+- **Yard Sale**: multi-family street sale, plant & seedling swap, relocation clear-out, toys & cycles, vintage books & vinyl, semester-end book & gadget sale.
+- **Technology**: Google Cloud full-stack workshop, open-source hack night, Python & GenAI for beginners, founders breakfast, Cloud Run study jam.
+- **Education**: kids' STEM robotic arm, spoken English circle, terrace gardening, youth financial literacy.
+- **Community**: board game night, repair café, native tree planting, Noyyal riverbank clean-up.
+- **8 past events** (one per category, plus an Ettimadai clean-up) to demonstrate expiry.
+
+Dates are generated relative to the day you seed, so the board is always populated with upcoming events — **re-seed on the morning of a demo**.
 
 ---
 

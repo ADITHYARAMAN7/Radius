@@ -75,14 +75,20 @@ Adhi's Flask version is a prototype; we only port ideas from it (see §6).
 - `npm run verify --prefix backend` — backend checks script
 - Full deployment guide: `docs/gcp-deployment.md`
 
-### Status as of Oct 2 review
-- Backend typecheck and frontend production build both pass with zero errors.
-- All 4 must-haves and all 4 listed features are implemented.
-- Extras present: login, edit/cancel/reactivate/delete (owner only), Explore map, near-me filter,
-  AI assist + AI search, insights dashboard, iCal/Google Calendar export, QR code, share menu, dark mode,
-  My Events / My RSVPs / Profile pages.
-- Docs present in `docs/`: architecture (+ SVG diagram), GCP architecture, deployment guide, hackathon report,
-  10-slide outline, demo script, roadmap, security.
+### Status (end of Oct 2, branch `suhas-dev`, PR open to `main`)
+- Typecheck + production build clean; `npm run verify --prefix backend` 134/134 against the emulators;
+  scripted API regression 38/38 (board, expiry, filters, create/edit/cancel/reactivate/delete, ownership,
+  RSVP/un-RSVP, share link, calendar, insights, AI assist/search, Snap-a-Poster).
+- All 4 must-haves and all 4 listed features work. Main's extras: login, edit/cancel/reactivate/delete,
+  Explore map, near-me filter, AI assist + AI search, insights, iCal/Google Calendar export, QR flyer, share
+  menu, dark mode, My Events / My RSVPs / Profile.
+- Added on suhas-dev: local emulator setup (`npm run dev:local`), Snap-a-Poster (idea by Adhi), Places
+  autocomplete (needs Maps key; manual fallback), spelling-proof neighbourhood filter + suggestions, Popular
+  badge, Amrita/Ettimadai seed events (42 total), month calendar view, installable PWA, Gemini fallback model.
+- Docs updated to match: README, `docs/roadmap.md`, `docs/presentation-slides.md`, `docs/demo-script.md`.
+  **Not yet reviewed:** `docs/cognizant-hackathon-report.md`, `docs/architecture*.md` may still contain old
+  claims (e.g. Gemini 1.5) — check before submitting them.
+- **Not verified by a human in the browser yet** (only API + build): see the click-through list in the PR.
 
 ---
 
@@ -92,7 +98,7 @@ Today everything runs and is tested **locally** on Suhas's Windows laptop (Power
 emulators** (Firestore + Auth) instead of a real GCP project, plus a Gemini API key from Google AI Studio.
 There is **no Google Maps key yet**.
 
-### Features today — in this order, one at a time (a separate prompt for each)
+### Features today — ✅ all 7 done on Oct 2 (details in the Progress log)
 1. **Local setup**: Firebase emulators (Firestore + Auth) + seeded demo data + fix the `npm run install:all`
    quirk (`npm install --prefix` adds a stray `"nearby-objects": "file:.."` dependency to both package.json files).
 2. **Snap-a-Poster** (idea from Adhi, re-implemented): upload a poster photo or paste a forwarded WhatsApp
@@ -113,13 +119,38 @@ There is **no Google Maps key yet**.
 7. **Final check**: full regression test, update docs/slide text to reality, update this log, open the
    pull request `suhas-dev → main`.
 
-### Tonight / tomorrow morning (with Kanish)
-- **Deploy to Cloud Run** following `docs/gcp-deployment.md`: Firebase project, service account, Firestore DB +
-  rules + indexes, Storage bucket, Maps key, Secret Manager, Cloud Build. Seed the deployed DB.
-- **Monitoring for the slides**: Cloud Logging screenshots (structured logs already exist), Cloud Run
-  dashboard, uptime check + alert, Cloud Scheduler job for `/api/maintenance/expire`.
-- **Presentation & video**: 8–10 slide deck from `docs/presentation-slides.md`, 2–3 min demo video, rehearse.
-  Everyone must be able to explain the architecture.
+### Tonight / tomorrow morning (with Kanish) — deployment checklist
+Follow `docs/gcp-deployment.md`; deploy **this branch's code** (after Kanish merges the PR, or from `suhas-dev`).
+1. **Project & budget**: create the GCP project on the free trial (never "Upgrade"); **budget alert** on the
+   billing account (alerts at 50% / 90% / 100% of a small budget).
+2. **Names**: replace every `nearby-objects` placeholder with the real IDs — `cloudbuild.yaml` (`_SERVICE`,
+   `_REPO`, service account `nearby-objects-run@…`), `.env.example` values, the `gcloud` commands in the guide.
+   Decide the app's display name too (UI says "Nearby-objects", manifest/repo say "Nearby-Events").
+3. **Firebase**: add the project in Firebase; Firestore (Native) in `asia-south1`; deploy `firestore.rules`
+   and `firestore.indexes.json`; **Auth → enable Email/Password and Google**, and add the Cloud Run URL to
+   **Authorized domains**; register a Web app and copy its config into the `_VITE_FIREBASE_*` substitutions.
+4. **Storage**: create the bucket (`GCS_BUCKET`) if image upload is wanted.
+5. **Gemini key** → **Secret Manager** secret `gemini-api-key` (and `maintenance-token`); grant the Cloud Run
+   service account *Secret Accessor*. Never a build arg, never committed.
+6. **Maps key**: enable **Maps JavaScript API** + **Places API (New)**; restrict the key by **HTTP referrer**
+   (`http://localhost:5173/*` + the Cloud Run URL) and by **API**; set **daily quota caps** (~500/day Places);
+   pass it as `_VITE_GOOGLE_MAPS_API_KEY`.
+7. **Build & deploy**: `gcloud builds submit --config cloudbuild.yaml --substitutions=…` (image tag now uses
+   `$BUILD_ID`, which works for manual builds). Env includes `TZ=Asia/Kolkata`.
+8. **Seed** the real DB (`npm run seed` with `GOOGLE_APPLICATION_CREDENTIALS` pointing at a service-account key
+   kept outside git, or from Cloud Shell). **Re-seed on the morning of Oct 6** — seed dates are relative to the
+   day you seed, so events seeded on Oct 3 will have started expiring by the demo.
+9. **Cloud Scheduler** job calling `POST /api/maintenance/expire` with header `X-Maintenance-Token` (hourly).
+10. **Monitoring for the slides**: Cloud Logging screenshots (look for "Gemini busy or slow, retrying once"
+    and "Poster extraction complete"), Cloud Run metrics dashboard, **uptime check on `/api/health` + alert**.
+11. **Smoke test on the real URL**: `/api/health` shows firestore connected + gemini configured; sign in;
+    post; RSVP; Snap-a-Poster; Places autocomplete (check Gandhipuram / Ettimadai spellings against the seed);
+    "Today" filter shows an event starting before 5:30 AM IST (TZ check); install on a phone.
+12. Demo day: `--min-instances=1` before the demo (back to 0 after), re-seed, run `docs/demo-script.md`.
+
+### After that
+- **Presentation & video**: build the deck from `docs/presentation-slides.md`, record a 2–3 min demo video,
+  rehearse. Everyone must be able to explain the architecture. Credit Adhi for Snap-a-Poster.
 
 ---
 
@@ -271,3 +302,16 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   manifest/repo say "Nearby-Events" — decide on one name; (2) the SPA fallback returns index.html (200) for
   missing files like `/assets/old.js` — should 404 for paths with a file extension.
   Next: feature 7 (final check + PR).
+- Oct 2: **Feature 7 — final check.** Fresh seed:clear + seed; verify 134/134; scripted API regression 38/38;
+  typecheck + build clean; production serving checked with SERVE_STATIC=true.
+  **Fixed:** (1) "Improve with AI" failed and AI search silently fell back to keywords whenever
+  `gemini-3.8-flash` was overloaded → all Gemini calls now share `generateWithFallback()` (12 s timeout, one
+  retry on `gemini-3.5-flash`); output token caps raised (the fallback model "thinks" and was truncating JSON);
+  (2) `cloudbuild.yaml` tagged images with `$COMMIT_SHA`, which is empty for manual `gcloud builds submit` →
+  now `$BUILD_ID`; (3) calendar view showed "0 events" in the filter bar; (4) SPA fallback returned HTML for
+  missing files → now 404 for paths with an extension. Docs rewritten to match reality (README, roadmap,
+  slides, demo script; removed claims such as "Gemini 1.5", Leaflet, "197/146 automated tests").
+  Headless screenshots couldn't load data reliably, so **UI click-through is still on Suhas** (list in the PR).
+  **Still open (not fixed):** app display name ("Nearby-objects" vs "Nearby-Events"); report/architecture docs
+  not re-checked; Places spellings need the real key; events are single-day only.
+  PR `suhas-dev → main` opened for Kanish — do not merge without review.
