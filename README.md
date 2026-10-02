@@ -15,7 +15,7 @@
 
 **Nearby-Events** is a modern, cloud-native digital community bulletin board designed to help local residents discover, post, share, and RSVP to neighborhood events, garage sales, sports games, workshops, and meetups.
 
-It replaces the fragmentation and clutter of physical corkboards and generic social media feeds with a hyper-local, real-time, and AI-enhanced experience powered by **Google Cloud Run**, **Cloud Firestore**, **Google Cloud Storage**, **Gemini** (default `gemini-3.8-flash`, via the Gemini API or Vertex AI), **Firebase Authentication** and **Google Maps Platform**.
+It replaces the fragmentation and clutter of physical corkboards and generic social media feeds with a hyper-local, real-time, and AI-enhanced experience powered by **Google Cloud Run**, **Cloud Firestore**, **Google Cloud Storage**, **Gemini** (default `gemini-3.5-flash-lite`, via the Gemini API or Vertex AI), **Firebase Authentication** and **Google Maps Platform**.
 
 ---
 
@@ -34,7 +34,7 @@ It replaces the fragmentation and clutter of physical corkboards and generic soc
 - 📸 **Snap-a-Poster** *(idea by Adhi)*: upload a poster photo or paste a forwarded WhatsApp message; Gemini pre-fills the post form for the organiser to check. Resolves "this Saturday 7pm" in the user's timezone, warns about past dates / missing end times / overnight events, never invents a place or date, ignores instructions hidden in pasted text, never auto-posts. Needs a Gemini key.
 - ✍️ **AI Event Assistant**: turns a short note into a clearer title, description, category and tags; you pick which suggestions to keep.
 - 🔎 **Natural-language search**: "sports this weekend in Gandhipuram" becomes board filters (`POST /api/ai/search`).
-- 🛟 **Resilient by design**: each Gemini call has a timeout and one retry on a fallback model (`gemini-3.5-flash`) when the main model is overloaded; the assistant and search then fall back to the built-in rule-based engine. AI is never required to post.
+- 🛟 **Resilient by design**: each Gemini call has a timeout and one retry on a fallback model (`gemini-3.1-flash-lite`) when the main model is overloaded; the assistant and search then fall back to the built-in rule-based engine. AI is never required to post.
 
 ### ✨ Extended Platform Capabilities
 - 🗓️ **Month Calendar View**: Explore → List · Map · **Calendar**; event counts and category dots per day, click a day for its events, shareable `?view=calendar&day=…` link. Days follow the viewer's timezone.
@@ -72,7 +72,7 @@ It replaces the fragmentation and clutter of physical corkboards and generic soc
 | **Compute / API Server** | **Google Cloud Run** | Serverless, autoscaling container hosting the Express + TypeScript API engine. Supports single-container deployment serving both API and static frontend SPA. |
 | **Database** | **Cloud Firestore** | NoSQL document database providing real-time synchronization, composite indexing (`date ASC, time ASC`), and secure rules. |
 | **Object Storage** | **Google Cloud Storage** | Highly available bucket storage for uploaded event images and public assets with CDN caching. |
-| **Generative AI** | **Gemini API / Vertex AI** | Snap-a-Poster (`/api/ai/extract`), content enhancement (`/api/ai/assist`) and search intent (`/api/ai/search`); `gemini-3.8-flash` with a `gemini-3.5-flash` fallback, built-in rules when there is no key. |
+| **Generative AI** | **Gemini API / Vertex AI** | Snap-a-Poster (`/api/ai/extract`), content enhancement (`/api/ai/assist`) and search intent (`/api/ai/search`); `gemini-3.5-flash-lite` with a `gemini-3.1-flash-lite` fallback, built-in rules when there is no key. |
 | **Identity & Auth** | **Firebase Authentication** | Secure user registration, sign-in, token issuance, and server-side JWT verification via Firebase Admin SDK. |
 | **Logging & Telemetry** | **Google Cloud Logging** | Structured JSON logging with request tracing, correlation IDs, and runtime execution metrics. |
 
@@ -188,8 +188,8 @@ GOOGLE_APPLICATION_CREDENTIALS=./service-account.json
 
 # Gemini (Google AI Studio key). Leave empty to use the built-in rule-based assistant.
 GEMINI_API_KEY=your_gemini_api_key_here
-GEMINI_MODEL=gemini-3.8-flash
-GEMINI_FALLBACK_MODEL=gemini-3.5-flash
+GEMINI_MODEL=gemini-3.5-flash-lite
+GEMINI_FALLBACK_MODEL=gemini-3.1-flash-lite
 
 # Cloud Storage bucket name (no gs:// prefix)
 GCS_BUCKET=your_gcs_bucket_name

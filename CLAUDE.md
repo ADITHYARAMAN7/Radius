@@ -55,7 +55,7 @@ Adhi's Flask version is a prototype; we only port ideas from it (see §6).
 - `frontend/` — React 18 + TypeScript + Vite + Tailwind. Firebase Auth (login) in the browser.
 - `backend/` — Node 20 + Express + TypeScript. Zod validation, helmet, rate limiting, structured logger.
 - Database: **Cloud Firestore** (`events`, `events/{id}/rsvps`, `users`, `users/{uid}/attending`).
-- Images: Cloud Storage. AI: Gemini (`@google/genai`, default model `gemini-3.8-flash`, or Vertex AI).
+- Images: Cloud Storage. AI: Gemini (`@google/genai`, default model `gemini-3.5-flash-lite` (cheapest; tested on all 4 AI features), fallback `gemini-3.1-flash-lite`, or Vertex AI).
   Note: Google no longer offers `gemini-2.5-flash` to new API keys (404) — that was main's old default.
 - Maps: Google Maps JS API via `@googlemaps/js-api-loader` (Explore map + event detail map).
 - Deploy: one Docker image (`docker/Dockerfile`) built by `cloudbuild.yaml` → **Cloud Run** (`asia-south1`).
