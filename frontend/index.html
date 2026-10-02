@@ -11,6 +11,14 @@
     />
     <meta name="theme-color" content="#0f172a" />
 
+    <!-- Installable on phones ("Add to Home Screen"). No service worker on purpose: nothing is cached offline. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Nearby-Events" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Nearby-objects — Discover. Connect. Participate." />
     <meta

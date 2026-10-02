@@ -260,3 +260,14 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   added `TZ=Asia/Kolkata` to `cloudbuild.yaml` and the deployment guide. **Tonight:** confirm on Cloud Run
   that the "Today" filter shows an event starting before 5:30 AM IST.
   Next: feature 6 (PWA, if time) or 7 (final check + PR).
+- Oct 2: **Feature 6 done — installable PWA** (manifest only, **no service worker on purpose**: not needed for
+  install on Chrome/iOS, and an app-shell cache risks serving an old version after a deploy).
+  `frontend/public/manifest.webmanifest` ("Nearby-Events", theme `#0f172a` = existing meta, background
+  `#f8f9fc`), icons in `frontend/public/icons/` (192, 512, maskable 512, apple-touch 180) generated from the
+  favicon by `node scripts/generate-pwa-icons.mjs` (headless Chrome/Edge, no new deps). index.html links them.
+  Backend serves `.webmanifest` with `no-cache` (it was going to be cached "immutable" for a year).
+  Checked with the built backend + SERVE_STATIC=true: manifest `application/manifest+json`, icons `image/png`.
+  **For later:** (1) the app calls itself "Nearby-objects" (title, navbar, package.json, README) while the
+  manifest/repo say "Nearby-Events" — decide on one name; (2) the SPA fallback returns index.html (200) for
+  missing files like `/assets/old.js` — should 404 for paths with a file extension.
+  Next: feature 7 (final check + PR).
