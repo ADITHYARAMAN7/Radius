@@ -8,7 +8,7 @@ export default function NotFound() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    document.title = 'Page not found — Nearby-objects';
+    document.title = 'Page not found — Nearby-Events';
   }, []);
 
   return (

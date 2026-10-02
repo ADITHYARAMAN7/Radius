@@ -24,8 +24,14 @@ import {
   type Category,
   type EventFormPayload,
   type EventRecord,
+  type ExtractField,
+  type ExtractionResult,
 } from '@/lib/types';
 import { cn, todayAsInputValue } from '@/lib/utils';
+import { isMapsConfigured } from '@/lib/maps';
+import { AddressSuggest } from './AddressSuggest';
+import { PlaceAutocomplete, type PickedPlace } from './PlaceAutocomplete';
+import { SnapPoster } from './SnapPoster';
 
 interface FormState {
   title: string;
@@ -143,6 +149,53 @@ function validate(form: FormState, isEdit: boolean): Errors {
   }
 
   return errors;
+}
+
+/* -------------------------------------------------------- Snap-a-Poster */
+
+const SNAP_FIELD_LABELS: Record<ExtractField, string> = {
+  title: 'Title',
+  description: 'Description',
+  category: 'Category',
+  date: 'Date',
+  startTime: 'Start time',
+  endTime: 'End time',
+  location: 'Venue',
+  address: 'Street address',
+  neighborhood: 'Neighbourhood',
+  city: 'City',
+};
+
+/** How a field got its value: read from the poster, suggested by us, or from a Google Maps pick. */
+type AiMark = 'ai' | 'suggested' | 'maps';
+
+const AI_HINTS: Record<AiMark, string> = {
+  ai: 'Filled by AI, please check.',
+  suggested: 'Suggested end time (start + 2 hours), please check.',
+  maps: 'Filled from the address search, please check.',
+};
+
+/** Highlights a field the AI filled until the user edits it. */
+const AI_RING = 'ring-2 ring-accent/60';
+
+/**
+ * A field still holding the value the form opened with (empty, today, 18:00, Coimbatore…)
+ * has not been typed by the user, so the AI may fill it without asking.
+ */
+function isUntouched(key: keyof FormState, form: FormState): boolean {
+  const value = form[key];
+  if (value === '' || value === null) return true;
+  const initial = key === 'date' ? todayAsInputValue() : EMPTY_FORM[key];
+  return value === initial;
+}
+
+/** "19:30" + 2h → "21:30"; null when that would cross midnight. */
+function addTwoHours(time: string): string | null {
+  const [hours, minutes] = time.split(':').map(Number);
+  if (hours === undefined || minutes === undefined) return null;
+  const total = hours * 60 + minutes + 120;
+  if (total > 23 * 60 + 59) return null;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
 /* ------------------------------------------------------------- AI panel */
@@ -485,6 +538,21 @@ export function EventForm({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
 
+  // Snap-a-Poster state: which fields the AI filled, what it warned about, and a result
+  // waiting for the user to decide whether it may overwrite what they already typed.
+  const [aiChecked, setAiChecked] = useState(false);
+  const [aiMarks, setAiMarks] = useState<Partial<Record<keyof FormState, AiMark>>>({});
+  const [snapWarnings, setSnapWarnings] = useState<string[]>([]);
+  const [pendingSnap, setPendingSnap] = useState<{ result: ExtractionResult; conflicts: ExtractField[] } | null>(
+    null,
+  );
+
+  /**
+   * Google Places autocomplete for the address when a Maps key is configured. If the
+   * script fails to load, this flips off and the form is exactly the manual one again.
+   */
+  const [placesMode, setPlacesMode] = useState(isMapsConfigured);
+
   const isEdit = mode === 'edit';
 
   useEffect(() => {
@@ -494,11 +562,20 @@ export function EventForm({
         setAiAvailable(status.available);
         setAiProvider(status.provider ?? 'gemini');
       })
-      .catch(() => setAiAvailable(false));
+      .catch(() => setAiAvailable(false))
+      .finally(() => setAiChecked(true));
   }, []);
 
   const set = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
+
+    // Once the user edits an AI-filled field it is theirs, so the "please check" mark goes.
+    setAiMarks((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
 
     // Clear the error as soon as the user starts fixing the field, and drop the summary
     // with it — leaving a stale "3 fields need attention" banner up while they work
@@ -518,6 +595,105 @@ export function EventForm({
     }));
     setErrors({});
   }, []);
+
+  /** A field the user typed into, as opposed to empty, a starting default, or AI-filled. */
+  const isUserValue = (key: keyof FormState) => !isUntouched(key, form) && !aiMarks[key];
+
+  const applySnap = (result: ExtractionResult, overwrite: boolean) => {
+    const next: FormState = { ...form };
+    const marks: Partial<Record<keyof FormState, AiMark>> = {};
+    const extraWarnings: string[] = [];
+
+    for (const key of result.filled) {
+      const value = result.fields[key];
+      if (value === null) continue;
+      if (overwrite || !isUserValue(key)) {
+        next[key] = value as never;
+        marks[key] = 'ai';
+      }
+    }
+
+    // The board needs an end time. When the source has none, suggest start + 2h, marked
+    // so the user notices — unless that would cross midnight, which the form cannot hold.
+    const startApplied = marks.startTime === 'ai';
+    const crossesMidnight = result.warnings.some((warning) => warning.includes('midnight'));
+    if (startApplied && result.fields.endTime === null && (overwrite || !isUserValue('endTime'))) {
+      const suggestion = crossesMidnight ? null : addTwoHours(next.startTime);
+      if (suggestion) {
+        next.endTime = suggestion;
+        marks.endTime = 'suggested';
+      } else {
+        next.endTime = '';
+        if (!crossesMidnight) {
+          extraWarnings.push(
+            `It starts at ${next.startTime}, so two hours later would be past midnight. Please set an end time before midnight.`,
+          );
+        }
+      }
+    }
+
+    setForm(next);
+    setAiMarks((current) => ({ ...current, ...marks }));
+    setSnapWarnings([...result.warnings, ...extraWarnings]);
+    setPendingSnap(null);
+    setErrors({});
+    setSubmitError(null);
+  };
+
+  const handleExtracted = (result: ExtractionResult) => {
+    const conflicts = result.filled.filter((key) => {
+      const value = result.fields[key];
+      return value !== null && isUserValue(key) && form[key] !== value;
+    });
+
+    // Never silently wipe what the user typed: ask first.
+    if (conflicts.length > 0) setPendingSnap({ result, conflicts });
+    else applySnap(result, false);
+  };
+
+  /**
+   * A picked suggestion is the most reliable source for address, area and coordinates,
+   * so those are replaced. The venue name is only filled when empty — a street address
+   * pick would otherwise overwrite "VOC Park" with "12 Cross Cut Road".
+   */
+  const applyPlace = (place: PickedPlace) => {
+    const next: FormState = {
+      ...form,
+      address: place.address || form.address,
+      neighborhood: place.neighborhood || form.neighborhood,
+      city: place.city || form.city,
+      latitude: place.latitude === null ? '' : place.latitude.toFixed(6),
+      longitude: place.longitude === null ? '' : place.longitude.toFixed(6),
+    };
+    const marks: Partial<Record<keyof FormState, AiMark>> = {};
+    if (place.address) marks.address = 'maps';
+    if (place.neighborhood) marks.neighborhood = 'maps';
+    if (place.city) marks.city = 'maps';
+
+    if (place.name && !form.location.trim()) {
+      next.location = place.name;
+      marks.location = 'maps';
+    }
+
+    setForm(next);
+    setAiMarks((current) => ({ ...current, ...marks }));
+    setErrors((current) => ({
+      ...current,
+      address: undefined,
+      location: next.location ? undefined : current.location,
+      neighborhood: undefined,
+      city: undefined,
+      latitude: undefined,
+      longitude: undefined,
+    }));
+    setSubmitError(null);
+  };
+
+  /** Hint and highlight for a field the AI filled; the field's own hint otherwise. */
+  const aiProps = (key: keyof FormState, hint?: string) => {
+    const mark = aiMarks[key];
+    return mark ? { hint: AI_HINTS[mark], className: AI_RING } : { hint };
+  };
 
   const onSubmit = async (submitEvent: React.FormEvent) => {
     submitEvent.preventDefault();
@@ -657,6 +833,60 @@ export function EventForm({
         </div>
       )}
 
+      {!isEdit && aiChecked && (
+        <SnapPoster
+          // Reading a poster needs Gemini itself; the rule-based fallback cannot, and must not guess.
+          available={aiAvailable && aiProvider === 'gemini'}
+          onExtracted={handleExtracted}
+          onUsePoster={(image) =>
+            setForm((current) => ({ ...current, imageUrl: image.imageUrl, imagePath: image.imagePath }))
+          }
+        />
+      )}
+
+      {pendingSnap && (
+        <Panel className="animate-fade-up space-y-3 bg-warning-soft/60 ring-warning/25" role="alertdialog" aria-label="Replace your entries?">
+          <p className="text-sm font-bold text-ink">The poster has values for fields you already filled in</p>
+          <p className="text-sm text-ink-soft">
+            {pendingSnap.conflicts.map((key) => SNAP_FIELD_LABELS[key]).join(', ')}. Replace them with what the AI read, or
+            keep yours and only fill the empty fields?
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="primary" onClick={() => applySnap(pendingSnap.result, true)}>
+              Replace with AI values
+            </Button>
+            <Button variant="secondary" onClick={() => applySnap(pendingSnap.result, false)}>
+              Keep mine, fill empty fields
+            </Button>
+            <Button variant="ghost" onClick={() => setPendingSnap(null)}>
+              Cancel
+            </Button>
+          </div>
+        </Panel>
+      )}
+
+      {snapWarnings.length > 0 && (
+        <div role="status" className="flex animate-fade-up gap-3 rounded-xl bg-warning-soft p-4 ring-1 ring-warning/25">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning-ink" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-warning-ink">Please check before publishing</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm text-warning-ink/90">
+              {snapWarnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSnapWarnings([])}
+            className="-m-1 h-7 w-7 shrink-0 rounded-lg text-warning-ink/70 transition-colors hover:bg-warning/10 hover:text-warning-ink"
+            aria-label="Dismiss these warnings"
+          >
+            <X className="mx-auto h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
       <AiPanel form={form} onApply={applyAi} available={aiAvailable} provider={aiProvider} />
 
       {/* ------------------------------------------------------ the basics */}
@@ -670,6 +900,7 @@ export function EventForm({
           value={form.title}
           onChange={(changeEvent) => set('title', changeEvent.target.value)}
           error={errors.title}
+          {...aiProps('title')}
           placeholder="Sunday morning football at VOC Grounds"
           maxLength={120}
           trailing={
@@ -692,7 +923,10 @@ export function EventForm({
           value={form.description}
           onChange={(changeEvent) => set('description', changeEvent.target.value)}
           error={errors.description}
-          hint="What happens, who it suits, and anything people should bring. Blank lines start a new paragraph."
+          {...aiProps(
+            'description',
+            'What happens, who it suits, and anything people should bring. Blank lines start a new paragraph.',
+          )}
           placeholder="Our weekly seven-a-side game is open to anyone who turns up…"
           maxLength={5000}
           trailing={
@@ -719,6 +953,7 @@ export function EventForm({
             value={form.category}
             onChange={(changeEvent) => set('category', changeEvent.target.value as Category)}
             error={errors.category}
+            {...aiProps('category')}
           >
             <option value="">Choose a category…</option>
             {CATEGORIES.map((category) => (
@@ -769,6 +1004,7 @@ export function EventForm({
             min={isEdit ? undefined : todayAsInputValue()}
             onChange={(changeEvent) => set('date', changeEvent.target.value)}
             error={errors.date}
+            {...aiProps('date')}
           />
 
           <Input
@@ -779,6 +1015,7 @@ export function EventForm({
             value={form.startTime}
             onChange={(changeEvent) => set('startTime', changeEvent.target.value)}
             error={errors.startTime}
+            {...aiProps('startTime')}
           />
 
           <Input
@@ -789,6 +1026,7 @@ export function EventForm({
             value={form.endTime}
             onChange={(changeEvent) => set('endTime', changeEvent.target.value)}
             error={errors.endTime}
+            {...aiProps('endTime')}
           />
         </div>
       </Card>
@@ -803,18 +1041,44 @@ export function EventForm({
           value={form.location}
           onChange={(changeEvent) => set('location', changeEvent.target.value)}
           error={errors.location}
+          {...aiProps('location')}
           placeholder="VOC Park Grounds"
         />
 
-        <Input
-          id="field-address"
-          label="Street address"
-          required
-          value={form.address}
-          onChange={(changeEvent) => set('address', changeEvent.target.value)}
-          error={errors.address}
-          placeholder="VOC Park, Dr Nanjappa Road, Gandhipuram, Coimbatore 641018"
-        />
+        {placesMode ? (
+          <PlaceAutocomplete
+            id="field-address"
+            label="Street address"
+            required
+            initialValue={form.address}
+            error={errors.address}
+            hint={
+              aiMarks.address
+                ? AI_HINTS[aiMarks.address]
+                : 'Start typing and pick a suggestion: it fills the neighbourhood, city and map pin for you.'
+            }
+            highlight={Boolean(aiMarks.address)}
+            onPick={applyPlace}
+            onType={(text) => set('address', text)}
+            onUnavailable={() => setPlacesMode(false)}
+          />
+        ) : (
+          // No Google key: OpenStreetMap suggestions as you type, same fill-in behaviour.
+          <AddressSuggest
+            id="field-address"
+            label="Street address"
+            required
+            value={form.address}
+            onChange={(text) => set('address', text)}
+            onPick={applyPlace}
+            error={errors.address}
+            {...aiProps(
+              'address',
+              'Start typing a place or street and pick a suggestion: it fills the neighbourhood, city and map pin.',
+            )}
+            placeholder="VOC Park, Dr Nanjappa Road, Gandhipuram, Coimbatore 641018"
+          />
+        )}
 
         <div className="grid gap-5 sm:grid-cols-2">
           <Input
@@ -824,7 +1088,7 @@ export function EventForm({
             value={form.neighborhood}
             onChange={(changeEvent) => set('neighborhood', changeEvent.target.value)}
             error={errors.neighborhood}
-            hint="This is what people filter and search by."
+            {...aiProps('neighborhood', 'This is what people filter and search by.')}
             placeholder="Gandhipuram"
           />
 
@@ -835,6 +1099,7 @@ export function EventForm({
             value={form.city}
             onChange={(changeEvent) => set('city', changeEvent.target.value)}
             error={errors.city}
+            {...aiProps('city')}
             placeholder="Coimbatore"
           />
         </div>

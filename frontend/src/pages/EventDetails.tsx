@@ -7,6 +7,7 @@ import {
   CalendarDays,
   Clock,
   ExternalLink,
+  Flame,
   MapPin,
   Pencil,
   RotateCcw,
@@ -41,6 +42,7 @@ import {
   googleMapsLink,
   hasFinished,
   isHappeningNow,
+  isPopular,
 } from '@/lib/utils';
 
 /** Confirmation for delete — an irreversible action should never be one click. */
@@ -205,7 +207,7 @@ export default function EventDetails() {
   }, [id, user, initialising, nonce]);
 
   useEffect(() => {
-    document.title = event ? `${event.title} — Nearby-objects` : 'Event — Nearby-objects';
+    document.title = event ? `${event.title} — Nearby-Events` : 'Event — Nearby-Events';
   }, [event]);
 
   const applyRsvp = useCallback(
@@ -418,6 +420,13 @@ export default function EventDetails() {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <CategoryBadge category={event.category} />
+
+              {isPopular(event) && (
+                <Badge tone="warning">
+                  <Flame className="h-3.5 w-3.5" aria-hidden="true" />
+                  Popular
+                </Badge>
+              )}
 
               {live && (
                 <Badge tone="success">

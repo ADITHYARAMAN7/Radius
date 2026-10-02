@@ -1,6 +1,7 @@
-# Demo script — Nearby-objects
+# Demo script — Nearby-Events
 
-> Written for whoever is presenting. 4 minutes if you keep moving, 5 with questions.
+> Written for whoever is presenting. About 5–6 minutes if you keep moving, plus questions.
+> Starred steps (⭐) are the ones to keep if you are short of time: 2, 4b, 8, 10, 14.
 
 ---
 
@@ -20,10 +21,13 @@ Run through this ten minutes before, not during.
 - [ ] Have a second tab already on `/insights` — switching tabs is faster than loading.
 - [ ] Have the event link for step 7 copied, in case the clipboard misbehaves.
 - [ ] Browser zoom at 100%, notifications off.
+- [ ] For Snap-a-Poster, have **a real poster photo** on the laptop (or phone) and this WhatsApp-style text
+      copied: `*Forwarded* Unplugged acoustic jam this Saturday 7pm at Brew Bay Cafe, Gandhipuram. Entry free!`
+- [ ] Install the app on a phone from the Cloud Run URL ("Add to Home Screen") so you can show the icon.
 
-**If the Gemini key is missing or rate limited**, the AI buttons simply do not appear.
-Skip steps 9–10 and spend the time on the map and the architecture instead. Nothing
-breaks, which is itself worth saying out loud.
+**If Gemini is overloaded**, each AI call retries once on a fallback model (up to ~25 s). If both fail
+the user sees "Couldn't read it automatically — please fill the form manually". Say that plainly, fill
+the form by hand and move on — nothing breaks, which is itself worth saying out loud.
 
 ---
 
@@ -31,17 +35,17 @@ breaks, which is itself worth saying out loud.
 
 ### 1 · Open on the home page  *(20s)*
 
-> "People miss things happening on their own street. Nearby-objects is a community event
-> board — discover, connect, participate."
+> "In Coimbatore, local events live on paper posters and forwarded WhatsApp messages — easy to
+> miss, impossible to search, and never taken down. Nearby-Events puts them on one board."
 
-Scroll once to show **Happening this week**, **Most popular**, and the category tiles with
-live counts.
+Scroll once to show **Happening this week**, **Most popular** (note the amber **🔥 Popular** badges),
+and the category tiles with live counts.
 
 **Say:** every number on this page is live from Firestore. Nothing is hardcoded.
 
 ---
 
-### 2 · Explore, and search by neighbourhood  *(30s)*
+### 2 · Explore, and search by neighbourhood  ⭐ *(30s)*
 
 Click **Explore Events**. Point at the result count.
 
@@ -79,6 +83,23 @@ Hit the **Map** toggle.
 
 Click a marker. The preview card opens. Click **View full event**.
 
+*(No Maps key? The map says it is unavailable — skip to step 5.)*
+
+---
+
+### 4b · Calendar view  ⭐ *(30s)*
+
+Back on Explore, hit **Calendar**. Open **Filters → Neighbourhood → Ettimadai** (the suggestions list
+offers it).
+
+> "Here is everything happening on this campus over the next two weeks."
+
+Click the day with **two events** (the Cloud Run study jam and the cultural night). Point at the greyed
+past days.
+
+**Say:** days follow the viewer's timezone — an event at 1 AM IST lands on the right day — and finished
+events never appear, the same expiry rule as the board. The URL (`?view=calendar&day=…`) is shareable.
+
 ---
 
 ### 5 · Event details  *(30s)*
@@ -111,18 +132,34 @@ Click **Copy link** and show the toast.
 
 ---
 
-### 8 · Create an event  *(30s)*
+### 8 · Snap-a-Poster  ⭐ *(60s — this is the moment)*
 
-Click **Create event**.
+Click **Create event**. At the top: **Fill from a poster or WhatsApp message**.
 
-Fill in only a rough draft — type it badly on purpose:
+1. Upload the **poster photo** → "Reading your poster…" → the form fills; filled fields are ringed and say
+   **"Filled by AI, please check"**.
+2. Or paste the WhatsApp text (`…this Saturday 7pm…`) → the date becomes **this Saturday's real date**, start
+   19:00, and the end time shows **"Suggested (start + 2 hours)"**.
 
-- **Title:** `football match this sunday near college`
-- **Description:** `casual game, anyone can come`
+> "Most events here already exist as a poster or a forwarded message. Snap-a-Poster turns that into a
+> structured listing in seconds — and the organiser checks every field before anything is posted."
+
+**Say:** it never guesses — no neighbourhood or city unless the text names one, a non-event says
+"Couldn't find event details", and instructions hidden in the pasted text are ignored. *Snap-a-Poster
+was Adhi's idea; we rebuilt it on the production stack.*
+
+**Places autocomplete** *(with a Maps key)*: in **Street address**, type `Brew Bay` / `Gandhipuram` and pick
+a suggestion — neighbourhood, city and the map pin fill in. **Say:** this is what keeps "R.S. Puram" and
+"RS Puram" from becoming two different places.
 
 ---
 
-### 9 · Improve with AI  ⭐ *(45s — this is the moment)*
+### 9 · Improve with AI  *(30s)*
+
+On a fresh Create form, type a rough draft badly on purpose:
+
+- **Title:** `football match this sunday near college`
+- **Description:** `casual game, anyone can come`
 
 Press **Improve with AI**.
 
@@ -157,6 +194,16 @@ The category chip, the date chip and the keywords all set themselves.
 
 ---
 
+### 10b · Community features  *(40s)*
+
+- On **Home**, point at **Recommended for you** (each card says *why*) and **Trending** (fast-growing events).
+- Open the **Live now: Race Course Neighbours Meet & Walk** event → **Check in** with code **`NEARBY`**.
+  > "RSVPs tell you who said yes. Check-ins tell you who actually came — organisers see real turnout."
+- Show the **Q&A** thread and the **weather** card on the same page, then the **Community** leaderboard
+  (points for hosting, RSVPing and checking in).
+
+---
+
 ### 11 · My events  *(20s)*
 
 **My events** → created events with live RSVP counts, upcoming and past tabs, edit and
@@ -182,9 +229,16 @@ category, most active neighbourhood, and charts by category and neighbourhood.
 Open `docs/architecture.md` or the diagram slide.
 
 > "Cloud Run serves both the API and the React app. Firestore holds users, events and
-> RSVPs. Cloud Storage holds event images. Gemini — or Vertex AI with no key stored
-> anywhere — powers the assistant. Maps Platform does the map. Cloud Logging gets
-> structured JSON with trace correlation. Cloud Scheduler runs the hourly expiry sweep."
+> RSVPs. Cloud Storage holds event images. Gemini powers Snap-a-Poster, the assistant and
+> smart search, with a fallback model when it is busy. Maps Platform does the map and the
+> address autocomplete. Cloud Logging gets structured JSON. Cloud Scheduler runs the expiry sweep."
+
+---
+
+### 14 · On a phone  ⭐ *(15s)*
+
+Show the **Nearby-Events** icon on the phone's home screen and open it — it runs full-screen like an app,
+no app store needed.
 
 **Close on this:**
 
@@ -213,14 +267,19 @@ the RSVP document id is the uid, so a double-press cannot double-count. Deleting
 cascades to every attendee's list. There is a test for each of those.
 
 **"What if Gemini is down?"**
-Every AI feature is additive. `/api/ai/status` tells the client whether to show the
-buttons, assist failures surface as "keep writing and publish without it", and smart search
-degrades to keyword search. Nothing blocks on the model.
+Every AI feature is additive. Each call times out after 12 seconds and retries once on a
+fallback model if the main one is overloaded. If that fails too, Snap-a-Poster and the assistant
+say "fill the form manually", and smart search degrades to keyword search. Nothing blocks on the
+model, and it never invents data to cover a failure.
+
+**"What if the poster is wrong or misleading?"**
+The organiser reviews every field before posting. Dates in the past, missing end times and
+overnight events are flagged. Places are only filled if the text names them.
 
 **"Is this actually working, or is it mocked?"**
-Real Firestore, real transactions, real Cloud Storage uploads, real Gemini calls. 146
-automated tests run against the Firestore emulator — 71 API, 75 service-level. `npm run
-verify` in `backend/` runs the service suite in front of them if they want to see it.
+Real Firestore, real transactions, real Gemini calls. `npm run verify --prefix backend` runs
+134 automated checks against the Firestore emulator (ownership, RSVP transaction, expiry,
+calendar range, Snap-a-Poster date rules), and the full API flow is regression-tested by script.
 
 **"What would you do next?"**
 See `docs/roadmap.md`. Honestly: moderation and a real search index, in that order. Those
@@ -234,6 +293,8 @@ are what stop this being deployable today, not features.
 |---|---|
 | Board is empty | You are looking at a stale deploy or an unseeded project. Switch to the tab you pre-loaded. |
 | AI button missing | Gemini is not configured. Say so plainly and move on — it is designed to degrade. |
+| Snap-a-Poster says "Couldn't read it automatically" | Gemini is overloaded. Say "it never guesses", fill the form by hand, try once more later. |
+| Address field is a plain text box | No Maps key in this build — type the address, neighbourhood and city by hand. |
 | Map blank | Maps key missing or referrer-restricted. The list view is unaffected; carry on. |
 | Slow first load | Cold start. This is why `--min-instances=1` is on the checklist. |
 | Sign-in popup blocked | Use the email/password form instead of Google. |

@@ -195,6 +195,26 @@ export interface AiSuggestion {
   source?: AiProvider;
 }
 
+/** Snap-a-Poster: form fields the AI can pre-fill. */
+export type ExtractField =
+  | 'title'
+  | 'description'
+  | 'category'
+  | 'date'
+  | 'startTime'
+  | 'endTime'
+  | 'location'
+  | 'address'
+  | 'neighborhood'
+  | 'city';
+
+export interface ExtractionResult {
+  found: boolean;
+  fields: Record<Exclude<ExtractField, 'category'>, string | null> & { category: Category | null };
+  filled: ExtractField[];
+  warnings: string[];
+}
+
 export interface SearchIntent {
   keywords: string;
   category: Category | null;
@@ -287,6 +307,18 @@ export interface TrendingEvent extends EventRecord {
   pulseStatus: PulseStatus;
   /** 1–3 human-readable reasons explaining the momentum. */
   pulseReasons: string[];
+}
+
+/** An address suggestion from /api/places/suggest (OpenStreetMap, used without a Google key). */
+export interface PlaceSuggestion {
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  kind: string;
+  city: string;
+  county: string;
+  locality: string;
 }
 
 export interface GeocodeResult {

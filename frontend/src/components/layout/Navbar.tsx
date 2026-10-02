@@ -101,7 +101,7 @@ export function Navbar({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onTo
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white shadow-sm">
               <MapPin className="h-[1.125rem] w-[1.125rem]" aria-hidden="true" />
             </span>
-            Nearby-objects
+            Nearby-Events
           </Link>
 
           {/* ------------------------------------------------- desktop links */}

@@ -1,4 +1,4 @@
-# Roadmap — Nearby-objects
+# Roadmap — Nearby-Events
 
 > Written for judges and for whoever picks this up next. Split into what genuinely works
 > today and what would have to happen before real neighbours could use it.
@@ -44,6 +44,25 @@ covered by automated tests unless noted.
 | K — Accessibility | ✅ | Landmarks, skip link, focus-visible, `aria-live`, labelled controls, chart text alternatives, reduced-motion |
 | L — Loading / empty / error states | ✅ | On every page, including a distinct offline state and an error boundary |
 
+### Added in the final build days (Oct 2)
+
+| Feature | Status | Notes |
+|---|---|---|
+| **Snap-a-Poster** — *idea by Adhi* | ✅ | Poster photo (JPG/PNG/WebP/HEIC ≤ 5 MB) or pasted WhatsApp text → Gemini structured output → pre-fills the create form. Relative dates resolved in the user's timezone; past-date, missing-end-time and past-midnight warnings; never invents a place or a date; asks before overwriting typed fields; nothing is auto-posted. Prompt-injection text is ignored (tested). |
+| **Month calendar view** | ✅ | Explore → Calendar. Unpaginated `/api/events/calendar` range endpoint (≤ 6 weeks), days grouped in the viewer's timezone, past days greyed, shareable `?view=calendar&day=` URL |
+| **Places Autocomplete** | ✅ code / ⏳ live test | Places API (New) `PlaceAutocompleteElement`, India-only, biased to Coimbatore; fills address, neighbourhood, city and the draggable map pin. Without a Maps key the address is typed and the pin found via "Find from address" |
+| **Recommended for you** (Kanish) | ✅ | Local Relevance Score: distance 30 %, interests 25 %, time 20 %, freshness 15 %, engagement 10 %, with reasons; 18 unit tests |
+| **Trending / Event Pulse** (Kanish) | ✅ | Recent engagement growth → Trending / Growing / Steady; 33 unit tests |
+| **QR check-in** (Thahseen) | ✅ | 6-character code + printable QR for organisers; guests check in from 1 h before start to 3 h after end |
+| **Neighbour points & leaderboard** (Thahseen) | ✅ | Host +20, RSVP +5, check-in +15; levels, badges, `/community` page |
+| **Q&A, save for later, weather, voice search** (Thahseen) | ✅ | Per-event question thread; saved tab; Open-Meteo forecast for the start hour; speech-to-search on Explore |
+| **Map without a Google key** (Thahseen) | ✅ | Leaflet + OpenStreetMap map, server-side Nominatim geocoding of typed addresses, draggable pin |
+| **Spelling-proof neighbourhoods** | ✅ | "R.S. Puram" = "R S Puram" = "RS Puram" for filtering; filter box suggests neighbourhoods that have upcoming events |
+| **"Popular" badge** | ✅ | 55+ RSVPs (≈ top fifth of the demo data) on cards and the detail page |
+| **Installable PWA** | ✅ | Web app manifest + icons; no service worker on purpose (no stale versions after a deploy) |
+| **Gemini resilience** | ✅ | Every AI call has a 12 s timeout and one retry on a fallback model when the main model is overloaded; assist and search then fall back to a built-in rule-based assistant |
+| **Zero-config local mode** (Thahseen) | ✅ | `npm run dev` with no configuration: Firestore + Auth emulators, seeded demo board, photos on disk, demo account |
+
 ### Beyond the brief
 
 - **Natural-language search** — a sentence becomes structured filters via Gemini, while
@@ -57,7 +76,11 @@ covered by automated tests unless noted.
   request.
 - **Graceful degradation** — the app runs with Gemini, Cloud Storage or Firebase Auth
   each missing, and says so rather than failing.
-- **197 automated tests** — 85 API, 88 service-level, 15 nearby-feature and 9 UI checks.
+- **Automated verification** — `npm run verify --prefix backend` runs 134 service-level checks
+  against the Firestore emulator (create/edit/ownership, RSVP transaction, expiry, calendar range,
+  neighbourhood matching, Snap-a-Poster date and warning rules), plus 18 recommendation-scoring and
+  33 trending checks (`verify-intelligence.ts`, `verify-pulse.ts`). The full API flow, including
+  sign-in through the Auth emulator, check-in, Q&A and AI, was regression-tested by script.
 
 ### Google Cloud services actually used
 
@@ -66,8 +89,8 @@ covered by automated tests unless noted.
 | **Cloud Run** | Hosts the API and serves the SPA | Yes — Dockerfile and deploy commands included |
 | **Firestore** | users, events, RSVPs | Yes — real transactions, real composite indexes |
 | **Cloud Storage** | Event images | Yes — server-side upload, signed-path layout, orphan cleanup |
-| **Gemini / Vertex AI** | Listing assistance, search intent | Yes — both provider modes implemented |
-| **Maps Platform** | Map view and location links | Yes |
+| **Gemini / Vertex AI** | Snap-a-Poster, listing assistance, search intent | Yes — both provider modes implemented |
+| **Maps Platform** | Map view, location links, Places autocomplete | Yes (Places verified live once the production key exists) |
 | **Cloud Logging** | Structured JSON with trace correlation | Yes |
 | **Cloud Scheduler** | Hourly expiry sweep | Yes — endpoint and setup commands included |
 | **Secret Manager** | Gemini key in production | Yes — deploy command uses `--set-secrets` |
@@ -91,9 +114,17 @@ multiplies by the instance count; a hard global limit needs a shared store.
 **No moderation.**
 Anyone signed in can post anything. This is the single biggest blocker to real use.
 
-**Coordinates are entered by hand.**
-Places Autocomplete would remove this entirely. It is the highest value-per-hour item on
-the whole list.
+**Places autocomplete needs a Maps key.**
+Without one (e.g. local development) the form falls back to typed neighbourhood/city and
+optional coordinates, so those events may not appear on the map.
+
+**Gemini capacity is outside our control.**
+The newest model is sometimes overloaded; we retry once on a fallback model, and if both fail
+the user gets a clear "fill the form manually" message. AI is never required to post.
+
+**Events are single-day.**
+An event's end time must be after its start on the same date, so overnight events (10 pm–2 am)
+cannot be represented yet; Snap-a-Poster warns when a poster describes one.
 
 **No email delivery.**
 No confirmations and no reminders.
@@ -101,10 +132,9 @@ No confirmations and no reminders.
 **Insights aggregates the whole collection per request.**
 Exact and fine at this size; would need maintained counters at scale.
 
-**Sign-in is not covered by automated tests.**
-Verifying a real Firebase ID token needs Google's public keys and a live project. The
-auth *guard* is tested — every protected route returns 401 without a valid token, and a
-forged bearer token is rejected — but the sign-in *flow* needs manual checking.
+**The browser UI is not covered by automated tests.**
+API behaviour (including sign-in via the Firebase Auth emulator) is scripted, but screens
+are checked by hand before each demo.
 
 ---
 
@@ -116,7 +146,6 @@ Ordered by what would actually matter next, not by what is most fun to build.
 
 | Item | Why it is first | Rough effort |
 |---|---|---|
-| **Places Autocomplete on the address field** | Removes hand-entered coordinates, makes every event mappable, and makes neighbourhood values consistent instead of free-text mush — which in turn makes the neighbourhood filter trustworthy | Half a day |
 | **Moderation and reporting** | A public board without a report button is not deployable. Report → queue → hide, plus a simple admin view | 2 days |
 | **Event reminders by email** | The most requested feature of any events product, and the thing that turns an RSVP into attendance. Cloud Scheduler + an email provider | 1 day |
 | **Shared-store rate limiting** | Correctness under more than one instance | Half a day |
@@ -143,7 +172,9 @@ Ordered by what would actually matter next, not by what is most fun to build.
 | **Waitlists and capacity** | Many of the seeded events genuinely cap attendance; the field is not modelled yet |
 | **Organiser analytics** | Per-event views, RSVP conversion, attendance follow-up |
 | **Calendar sync** | Two-way Google Calendar rather than one-shot add-to-calendar |
-| **PWA / offline** | Service worker so a saved event is readable without signal |
+| **Offline mode** | The app is already installable; a carefully versioned service worker would make saved events readable without signal |
+| **Multi-day / overnight events** | End date separate from start date; the calendar would then span days |
+| **Snap-a-Poster → image** | In production, the scanned poster can already become the event image; next is auto-cropping and multiple posters at once |
 
 ---
 
@@ -152,8 +183,9 @@ Ordered by what would actually matter next, not by what is most fun to build.
 Honest engineering notes rather than feature wishes.
 
 1. **Places Autocomplete from the start.** Hand-entered coordinates were the wrong
-   trade-off even for a prototype — it degrades the map, the distance filter and the
-   neighbourhood filter all at once, for about half a day of saved work.
+   trade-off even for a prototype — it degraded the map, the distance filter and the
+   neighbourhood filter all at once. It was added on the final build day; starting with it
+   would have saved re-normalising neighbourhood names afterwards.
 
 2. **A real search index earlier.** The in-memory relevance pass is correct and well
    bounded, but it shaped the query design around a limitation that an index removes.

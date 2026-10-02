@@ -99,7 +99,7 @@ export default function Insights() {
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
-    document.title = 'Community insights — Nearby-objects';
+    document.title = 'Community insights — Nearby-Events';
   }, []);
 
   useEffect(() => {

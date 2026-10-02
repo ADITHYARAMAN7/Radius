@@ -2,7 +2,8 @@
  * scripts/seed-events.ts
  *
  * Seeds Firestore with a rich, realistic local community event board.
- * Contains at least 20 realistic upcoming events across 7 core categories:
+ * Contains 34 realistic upcoming events across 7 core categories and 15 Coimbatore neighbourhoods,
+ * including 5 at Amrita Vishwa Vidyapeetham, Ettimadai (the judging venue). Categories:
  *   - Sports
  *   - Music
  *   - Food
@@ -34,6 +35,23 @@
 import net from 'node:net';
 import { env } from '../backend/src/config/env';
 import { FieldValue, Timestamp, getDb, initFirebase } from '../backend/src/config/firebase';
+import { env } from '../backend/src/config/env';
+import { placeKey } from '../backend/src/utils/search';
+
+// Say out loud where the data is going, and never let a "demo-" (emulator-only) project
+// fall through to real Google Cloud credentials.
+const emulatorHost = env.firestoreEmulatorHost || process.env.FIRESTORE_EMULATOR_HOST;
+if (emulatorHost) {
+  console.log(`[Seed] Target: Firestore EMULATOR at ${emulatorHost} (project "${env.projectId || 'nearby-objects-local'}")`);
+} else if (env.projectId.startsWith('demo-')) {
+  console.error(
+    `[Seed] Project "${env.projectId}" is emulator-only but FIRESTORE_EMULATOR_HOST is not set. ` +
+      'Start the emulators (npm run dev:local) or set FIRESTORE_EMULATOR_HOST in backend/.env.',
+  );
+  process.exit(1);
+} else {
+  console.warn(`[Seed] Target: REAL Firestore in project "${env.projectId || '(from credentials)'}"`);
+}
 
 initFirebase();
 const db = getDb();
@@ -210,7 +228,7 @@ interface SeedEventDefinition {
   liveNow?: boolean;
 }
 
-// 25 realistic upcoming events across all 7 categories + 7 expired events
+// 34 realistic upcoming events across all 7 categories + 8 expired events
 const UPCOMING_EVENTS: SeedEventDefinition[] = [
   // -------------------------------------------------------------------------
   // 0. HAPPENING NOW — keeps the "live" badge and the check-in flow demonstrable
@@ -315,8 +333,8 @@ const UPCOMING_EVENTS: SeedEventDefinition[] = [
     endTime: '19:00',
     timeFormatted: '5:45 PM - 7:00 PM',
     location: 'Terrace, Anand Residency',
-    address: 'Anand Residency, DB Road, R S Puram, Coimbatore 641002',
-    neighborhood: 'R S Puram',
+    address: 'Anand Residency, DB Road, R.S. Puram, Coimbatore 641002',
+    neighborhood: 'R.S. Puram',
     city: 'Coimbatore',
     latitude: 11.0041,
     longitude: 76.9503,
@@ -340,8 +358,8 @@ const UPCOMING_EVENTS: SeedEventDefinition[] = [
     endTime: '20:45',
     timeFormatted: '6:30 PM - 8:45 PM',
     location: 'Kuruvai Community Hall',
-    address: '12 Thadagam Road, R S Puram, Coimbatore 641002',
-    neighborhood: 'R S Puram',
+    address: '12 Thadagam Road, R.S. Puram, Coimbatore 641002',
+    neighborhood: 'R.S. Puram',
     city: 'Coimbatore',
     latitude: 11.0071,
     longitude: 76.9492,
@@ -873,10 +891,120 @@ const UPCOMING_EVENTS: SeedEventDefinition[] = [
     organiser: ORGANISERS.fatima,
     image: 'https://images.unsplash.com/photo-1558060370-d644479cb6f7?auto=format&fit=crop&w=1200&q=80',
   },
+
+  // -------------------------------------------------------------------------
+  // 8. AMRITA / ETTIMADAI (5 upcoming) — local to the judging venue.
+  //    #1 and #2 share a day so the calendar view has a busy date to show.
+  // -------------------------------------------------------------------------
+  {
+    title: 'GCP Study Jam: Deploy a Web App to Cloud Run in 90 Minutes',
+    description:
+      'A hands-on session for students who want to see a real app go live on Google Cloud. We start from a small Node.js app, containerise it, and deploy it to Cloud Run with a public URL before the session ends.\n\nBring a laptop with a browser and a Google account. Free trial credits are not needed for the guided parts — we use a shared sandbox project. Mentors from the developer club will be walking the room to help with errors.\n\nIdeal for second and third years getting ready for hackathons and internships.',
+    summary: 'Hands-on Cloud Run workshop: containerise a small app and deploy it live in one session.',
+    category: 'Technology',
+    tags: ['gcp', 'cloud run', 'workshop', 'students', 'hands-on'],
+    daysFromNow: 3,
+    startTime: '14:00',
+    endTime: '16:00',
+    timeFormatted: '2:00 PM – 4:00 PM',
+    location: 'Amrita School of Computing, Lab 4',
+    address: 'Amrita Vishwa Vidyapeetham, Amritanagar, Ettimadai, Coimbatore 641112',
+    neighborhood: 'Ettimadai',
+    city: 'Coimbatore',
+    latitude: 10.9031,
+    longitude: 76.9011,
+    rsvpCount: 48,
+    organiser: ORGANISERS.karthik,
+    image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    title: 'Campus Cultural Night: Carnatic, Folk and Fusion',
+    description:
+      'An open-air evening of music on the main lawn. The first half features Carnatic vocal and veena performances by students, followed by Tamil folk drumming and a closing fusion set from the campus band.\n\nEntry is free and open to residents of Ettimadai and nearby villages as well as students. Seating is on mats, so bring a cushion if you like. Tea and sundal will be available from the canteen stall.',
+    summary: 'Open-air evening of Carnatic, folk drumming and fusion music on the campus lawn.',
+    category: 'Music',
+    tags: ['carnatic', 'folk', 'fusion', 'live music', 'free entry'],
+    daysFromNow: 3,
+    startTime: '18:30',
+    endTime: '21:30',
+    timeFormatted: '6:30 PM – 9:30 PM',
+    location: 'Amrita Main Lawn Amphitheatre',
+    address: 'Amrita Vishwa Vidyapeetham, Amritanagar, Ettimadai, Coimbatore 641112',
+    neighborhood: 'Ettimadai',
+    city: 'Coimbatore',
+    latitude: 10.9024,
+    longitude: 76.9003,
+    rsvpCount: 47,
+    organiser: ORGANISERS.meena,
+    image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    title: 'Inter-College 3v3 Basketball Tournament',
+    description:
+      'Sixteen teams from colleges across Coimbatore play a one-day 3v3 knockout on the outdoor courts. Games are ten minutes or first to 21, with the final scheduled for around noon.\n\nTeams can still register at the desk until 7:00 AM on the day (three players plus one substitute, college ID required). Spectators are welcome and entry is free. There is shade by the pavilion and a water station courtside.',
+    summary: 'One-day inter-college 3v3 basketball knockout, spectators welcome, free entry.',
+    category: 'Sports',
+    tags: ['basketball', 'tournament', 'inter-college', '3v3', 'spectators welcome'],
+    daysFromNow: 6,
+    startTime: '07:00',
+    endTime: '13:00',
+    timeFormatted: '7:00 AM – 1:00 PM',
+    location: 'Amrita Sports Complex Outdoor Courts',
+    address: 'Amrita Vishwa Vidyapeetham, Amritanagar, Ettimadai, Coimbatore 641112',
+    neighborhood: 'Ettimadai',
+    city: 'Coimbatore',
+    latitude: 10.9017,
+    longitude: 76.8996,
+    rsvpCount: 88,
+    organiser: ORGANISERS.arun,
+    image: 'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    title: 'Hostel Food Stall Day: Snacks from 12 States',
+    description:
+      'Students from twelve states run home-style snack stalls for one evening: think Kerala banana chips, Gujarati dhokla, Bengali jhalmuri, Andhra mirchi bajji and Punjabi samosa chaat.\n\nMost items cost between ₹20 and ₹60, and all proceeds go to the hostel welfare fund. Vegetarian options at every stall. Bring your own bottle — there are free water refill points.',
+    summary: 'Student-run snack stalls from twelve states, ₹20–₹60 a plate, proceeds to hostel welfare.',
+    category: 'Food',
+    tags: ['street food', 'regional', 'students', 'fundraiser', 'vegetarian'],
+    daysFromNow: 9,
+    startTime: '16:00',
+    endTime: '20:00',
+    timeFormatted: '4:00 PM – 8:00 PM',
+    location: 'Amrita Main Canteen Lawn',
+    address: 'Amrita Vishwa Vidyapeetham, Amritanagar, Ettimadai, Coimbatore 641112',
+    neighborhood: 'Ettimadai',
+    city: 'Coimbatore',
+    latitude: 10.9029,
+    longitude: 76.9018,
+    rsvpCount: 41,
+    organiser: ORGANISERS.priya,
+    image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    title: 'Semester-End Book and Gadget Swap Sale',
+    description:
+      'Graduating and senior students sell or swap textbooks, lab coats, calculators, drafters, cycles and small electronics before the semester break.\n\nSellers can book a free table at the student council desk. Buyers: bring cash or UPI, and please check gadgets on the spot — everything is sold as-is. Unsold books can be donated to the department library at the end.',
+    summary: 'Students sell or swap textbooks, calculators, cycles and gadgets before the break.',
+    category: 'Yard Sale',
+    tags: ['books', 'second-hand', 'gadgets', 'students', 'swap'],
+    daysFromNow: 12,
+    startTime: '10:00',
+    endTime: '14:00',
+    timeFormatted: '10:00 AM – 2:00 PM',
+    location: 'Amrita Central Library Foyer',
+    address: 'Amrita Vishwa Vidyapeetham, Amritanagar, Ettimadai, Coimbatore 641112',
+    neighborhood: 'Ettimadai',
+    city: 'Coimbatore',
+    latitude: 10.9035,
+    longitude: 76.9006,
+    rsvpCount: 23,
+    organiser: ORGANISERS.fatima,
+    image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1200&q=80',
+  },
 ];
 
 // ---------------------------------------------------------------------------
-// 7 Realistic Expired / Past Events (Demonstrated separately)
+// 8 Realistic Expired / Past Events (Demonstrated separately)
 // ---------------------------------------------------------------------------
 const EXPIRED_EVENTS: SeedEventDefinition[] = [
   {
@@ -913,8 +1041,8 @@ const EXPIRED_EVENTS: SeedEventDefinition[] = [
     endTime: '20:15',
     timeFormatted: '6:00 PM - 8:15 PM',
     location: 'Kuruvai Heritage Hall',
-    address: '12 Thadagam Road, R S Puram, Coimbatore 641002',
-    neighborhood: 'R S Puram',
+    address: '12 Thadagam Road, R.S. Puram, Coimbatore 641002',
+    neighborhood: 'R.S. Puram',
     city: 'Coimbatore',
     latitude: 11.0071,
     longitude: 76.9492,
@@ -1031,6 +1159,28 @@ const EXPIRED_EVENTS: SeedEventDefinition[] = [
     rsvpCount: 39,
     organiser: ORGANISERS.fatima,
     image: 'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=1200&q=80',
+    isExpired: true,
+  },
+  {
+    title: '[Past] Ettimadai Village Road Clean-up Drive',
+    description:
+      'Volunteers from the NSS unit and Ettimadai residents cleared plastic and debris along the two-kilometre stretch from the campus gate to the village bus stop.\n\nGloves, bags and drinking water were provided, and the collected waste was handed to the panchayat for segregation and recycling.',
+    summary: 'NSS volunteers and residents cleared the road from the campus gate to the bus stop.',
+    category: 'Community',
+    tags: ['clean-up', 'volunteering', 'nss', 'environment', 'past'],
+    daysFromNow: -2,
+    startTime: '07:00',
+    endTime: '09:30',
+    timeFormatted: '7:00 AM - 9:30 AM',
+    location: 'Amrita Main Gate',
+    address: 'Amrita Vishwa Vidyapeetham Main Gate, Ettimadai, Coimbatore 641112',
+    neighborhood: 'Ettimadai',
+    city: 'Coimbatore',
+    latitude: 10.9052,
+    longitude: 76.9038,
+    rsvpCount: 52,
+    organiser: ORGANISERS.david,
+    image: 'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?auto=format&fit=crop&w=1200&q=80',
     isExpired: true,
   },
 ];
@@ -1361,8 +1511,8 @@ async function seedEvents(): Promise<void> {
         creatorPhotoURL: null,
 
         // Search indexes
-        neighborhoodLower: normalise(item.neighborhood),
-        cityLower: normalise(item.city),
+        neighborhoodLower: placeKey(item.neighborhood),
+        cityLower: placeKey(item.city),
         searchKeywords: buildKeywords([
           item.title,
           item.summary,

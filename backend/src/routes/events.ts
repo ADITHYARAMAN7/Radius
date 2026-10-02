@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { optionalAuth, requireAuth, currentUser, type AuthedRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/error';
-import { eventInputSchema, eventQuerySchema, eventUpdateSchema } from '../middleware/validate';
+import { calendarQuerySchema, eventInputSchema, eventQuerySchema, eventUpdateSchema } from '../middleware/validate';
 import {
   cancelEvent,
   createEvent,
@@ -9,6 +9,7 @@ import {
   getEventById,
   listAttendees,
   listEvents,
+  listEventsInRange,
   listRelatedEvents,
   reactivateEvent,
   updateEvent,
@@ -44,6 +45,30 @@ eventsRouter.get(
     };
 
     const result = await listEvents(options, req.user?.uid);
+    res.json(result);
+  }),
+);
+
+/**
+ * GET /api/events/calendar?from&to — every event in a month grid, unpaginated.
+ * Registered before /:id so "calendar" is never read as an event id.
+ */
+eventsRouter.get(
+  '/calendar',
+  optionalAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const query = calendarQuerySchema.parse(req.query);
+
+    const result = await listEventsInRange(
+      {
+        from: new Date(query.from),
+        to: new Date(query.to),
+        category: query.category,
+        neighborhood: query.neighborhood,
+        city: query.city,
+      },
+      req.user?.uid,
+    );
     res.json(result);
   }),
 );

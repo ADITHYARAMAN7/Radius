@@ -12,7 +12,7 @@ import type { EventInput, EventUpdateInput } from '../middleware/validate';
 import type { AuthUser } from '../middleware/auth';
 import type { Category, EventQueryOptions, EventRecord, Paginated } from '../types';
 import { combineDateTime, distanceKm, resolveDateWindow, toIso } from '../utils/dates';
-import { buildKeywords, normalise, relevanceScore } from '../utils/search';
+import { buildKeywords, normalise, placeKey, relevanceScore } from '../utils/search';
 import { generateCheckInCode } from './checkinService';
 import { pointsDelta } from './gamificationService';
 import { geocode } from './geocodeService';
@@ -96,11 +96,11 @@ interface SearchableFields {
   city: string;
 }
 
-/** Lowercase mirrors exist so Firestore equality filters behave case-insensitively. */
+/** Matching-key mirrors (see placeKey) so Firestore equality filters ignore case, dots and spaces. */
 function buildSearchFields(input: SearchableFields) {
   return {
-    neighborhoodLower: normalise(input.neighborhood),
-    cityLower: normalise(input.city),
+    neighborhoodLower: placeKey(input.neighborhood),
+    cityLower: placeKey(input.city),
     searchKeywords: buildKeywords([
       input.title,
       input.summary,
@@ -512,9 +512,9 @@ export async function listEvents(
   if (options.category) {
     query = query.where('category', '==', options.category);
   } else if (options.neighborhood) {
-    query = query.where('neighborhoodLower', '==', normalise(options.neighborhood));
+    query = query.where('neighborhoodLower', '==', placeKey(options.neighborhood));
   } else if (options.city) {
-    query = query.where('cityLower', '==', normalise(options.city));
+    query = query.where('cityLower', '==', placeKey(options.city));
   }
 
   if (!isPast && !isAll) {
@@ -541,12 +541,12 @@ export async function listEvents(
 
   // Equality filters that were not pushed down to Firestore.
   if (options.category && options.neighborhood) {
-    const target = normalise(options.neighborhood);
-    records = records.filter((e) => normalise(e.neighborhood) === target);
+    const target = placeKey(options.neighborhood);
+    records = records.filter((e) => placeKey(e.neighborhood) === target);
   }
   if ((options.category || options.neighborhood) && options.city) {
-    const target = normalise(options.city);
-    records = records.filter((e) => normalise(e.city) === target);
+    const target = placeKey(options.city);
+    records = records.filter((e) => placeKey(e.city) === target);
   }
 
   if (options.lat !== undefined && options.lng !== undefined && options.radiusKm) {
@@ -599,6 +599,63 @@ export async function listEvents(
     totalPages: Math.max(1, Math.ceil(total / pageSize)),
     hasMore: start + pageSize < total,
   };
+}
+
+/** Safety cap for one calendar grid; far above what a 6-week window holds today. */
+const CALENDAR_CAP = 300;
+
+export interface CalendarRangeOptions {
+  from: Date;
+  to: Date;
+  category?: Category;
+  neighborhood?: string;
+  city?: string;
+}
+
+/**
+ * Every active, not-yet-finished event starting in [from, to) — the month view needs the
+ * whole range, not one page. The browser sends the range already aligned to its own
+ * midnight, so day boundaries follow the user's timezone rather than the server's.
+ *
+ * Uses the existing status + startsAt index; the place and category filters are applied
+ * in memory with placeKey, exactly like the list endpoint's fallback filters.
+ */
+export async function listEventsInRange(
+  options: CalendarRangeOptions,
+  viewerUid?: string,
+): Promise<{ items: EventRecord[]; truncated: boolean }> {
+  const snapshot = await getDb()
+    .collection(EVENTS)
+    .where('status', '==', 'ACTIVE')
+    .where('startsAt', '>=', Timestamp.fromDate(options.from))
+    .where('startsAt', '<', Timestamp.fromDate(options.to))
+    .orderBy('startsAt', 'asc')
+    .limit(CALENDAR_CAP + 1)
+    .get();
+
+  const truncated = snapshot.size > CALENDAR_CAP;
+  const now = Date.now();
+
+  // Same expiry rule as the board: a finished event is never shown, even before the
+  // scheduled sweep flips its status — so past days stay empty and today shows only
+  // what has not ended yet.
+  let items = snapshot.docs
+    .slice(0, CALENDAR_CAP)
+    .map((doc) => toEventRecord(doc))
+    .filter((event) => new Date(event.endsAt).getTime() >= now);
+
+  if (options.category) items = items.filter((event) => event.category === options.category);
+  if (options.neighborhood) {
+    const target = placeKey(options.neighborhood);
+    items = items.filter((event) => placeKey(event.neighborhood) === target);
+  }
+  if (options.city) {
+    const target = placeKey(options.city);
+    items = items.filter((event) => placeKey(event.city) === target);
+  }
+
+  await decorateForViewer(items, viewerUid);
+  return { items, truncated };
 }
 
 export async function listEventsByCreator(uid: string, viewerUid?: string): Promise<EventRecord[]> {

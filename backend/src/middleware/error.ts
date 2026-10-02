@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import multer from 'multer';
 import { ZodError } from 'zod';
 import { logger } from '../config/logger';
 import { env } from '../config/env';
@@ -65,6 +66,22 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
         code: 'VALIDATION_FAILED',
         message: 'Please check the highlighted fields and try again.',
         fields: fieldErrorsFrom(err),
+      },
+    });
+    return;
+  }
+
+  // Multer rejects oversized or unexpected uploads with its own error type; without this
+  // they surfaced as a generic 500 instead of telling the user what to fix.
+  if (err instanceof multer.MulterError) {
+    const tooLarge = err.code === 'LIMIT_FILE_SIZE';
+    logger.warn('Upload rejected', { code: err.code, path: req.path, method: req.method });
+    res.status(tooLarge ? 413 : 400).json({
+      error: {
+        code: tooLarge ? 'FILE_TOO_LARGE' : 'BAD_UPLOAD',
+        message: tooLarge
+          ? 'That image is larger than 5 MB. Please choose a smaller file.'
+          : 'Please upload a single image file.',
       },
     });
     return;

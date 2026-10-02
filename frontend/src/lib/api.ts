@@ -10,6 +10,8 @@ import type {
   EventFiltersState,
   EventFormPayload,
   EventRecord,
+  ExtractionResult,
+  PlaceSuggestion,
   EventWeather,
   GeocodeResult,
   InsightsPayload,
@@ -128,7 +130,7 @@ async function requestOnce<T>(path: string, options: RequestOptions = {}): Promi
     throw new ApiError(
       0,
       'NETWORK',
-      'We could not reach Nearby-objects. Check your connection and try again.',
+      'We could not reach Nearby-Events. Check your connection and try again.',
     );
   }
 
@@ -213,6 +215,25 @@ export const api = {
       signal,
     }),
 
+  /**
+   * Every event starting in [from, to), unpaginated — for the month calendar. `from`/`to`
+   * are the browser's local midnights, so days follow the viewer's timezone.
+   */
+  eventsInRange: (
+    range: { from: Date; to: Date; category?: string | null; neighborhood?: string; city?: string },
+    signedIn: boolean,
+    signal?: AbortSignal,
+  ) => {
+    const params = new URLSearchParams({ from: range.from.toISOString(), to: range.to.toISOString() });
+    if (range.category) params.set('category', range.category);
+    if (range.neighborhood?.trim()) params.set('neighborhood', range.neighborhood.trim());
+    if (range.city?.trim()) params.set('city', range.city.trim());
+    return request<{ items: EventRecord[]; truncated: boolean }>(`/events/calendar?${params}`, {
+      auth: signedIn,
+      signal,
+    });
+  },
+
   getEvent: (id: string, signedIn: boolean, signal?: AbortSignal) =>
     request<EventDetailResponse>(`/events/${id}`, { auth: signedIn, signal }),
 
@@ -249,6 +270,29 @@ export const api = {
 
   categories: () => request<{ categories: CategoryCount[] }>('/categories'),
 
+  /** Address suggestions while typing, when there is no Google Maps key (OpenStreetMap / Photon). */
+  placeSuggestions: (query: string, signal?: AbortSignal) =>
+    request<{ suggestions: PlaceSuggestion[] }>(`/places/suggest?q=${encodeURIComponent(query)}`, { auth: true, signal }),
+
+  /** Neighbourhood + city for a picked suggestion. */
+  resolvePlace: (suggestion: PlaceSuggestion) =>
+    request<{ place: { neighborhood: string; city: string } }>('/places/resolve', {
+      method: 'POST',
+      body: {
+        latitude: suggestion.latitude,
+        longitude: suggestion.longitude,
+        name: suggestion.name,
+        kind: suggestion.kind,
+        city: suggestion.city,
+        county: suggestion.county,
+        locality: suggestion.locality,
+      },
+      auth: true,
+    }),
+
+  /** Neighbourhoods with upcoming events, for the filter's suggestions. */
+  neighborhoods: () => request<{ neighborhoods: Array<{ name: string; count: number }> }>('/neighborhoods'),
+
   insights: () => request<InsightsPayload>('/insights'),
 
   aiStatus: () => request<{ available: boolean; provider?: AiProvider }>('/ai/status'),
@@ -264,6 +308,14 @@ export const api = {
   aiSearch: (query: string) =>
     request<{ intent: SearchIntent }>('/ai/search', { method: 'POST', body: { query }, auth: true }),
 
+  /** Snap-a-Poster: a poster photo and/or pasted message in, form values out. */
+  aiExtract: (input: { image?: Blob; text?: string; timezone: string }) => {
+    const form = new FormData();
+    if (input.image) form.append('image', input.image, 'poster');
+    if (input.text) form.append('text', input.text);
+    form.append('timezone', input.timezone);
+    return request<{ result: ExtractionResult }>('/ai/extract', { method: 'POST', formData: form, auth: true });
+  },
   /* ------------------------------------------------- comments (Q&A thread) */
 
   listComments: (id: string, signedIn: boolean, signal?: AbortSignal) =>

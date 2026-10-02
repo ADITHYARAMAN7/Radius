@@ -9,7 +9,7 @@
  */
 import { Timestamp, getDb, initFirebase } from '../config/firebase';
 import type { AuthUser } from '../middleware/auth';
-import { eventInputSchema } from '../middleware/validate';
+import { calendarQuerySchema, eventInputSchema } from '../middleware/validate';
 import {
   cancelEvent,
   createEvent,
@@ -20,12 +20,15 @@ import {
   listEvents,
   listEventsAttending,
   listEventsByCreator,
+  listEventsInRange,
   reactivateEvent,
   updateEvent,
 } from '../services/eventService';
 import { joinEvent, leaveEvent } from '../services/rsvpService';
 import { ensureProfile, updateProfile } from '../services/userService';
-import { getInsights } from '../services/statsService';
+import { getInsights, getNeighborhoodOptions } from '../services/statsService';
+import { placeKey } from '../utils/search';
+import { normalizeExtraction, nowInTimezone, resolveTimezone } from '../services/aiService';
 import { isOwnedImagePath } from '../services/storageService';
 import { AppError } from '../middleware/error';
 
@@ -422,6 +425,9 @@ async function main(): Promise<void> {
       }),
       ORGANISER,
     );
+    // createEvent now geocodes a missing pin from the address, so clear it afterwards to
+    // model an address the geocoder could not place.
+    await db.collection('events').doc(unplaced.id).update({ latitude: null, longitude: null });
 
     const placedOnly = await listEvents({ ...centre, radiusKm: 50, pageSize: 60 });
     check(
@@ -572,6 +578,131 @@ async function main(): Promise<void> {
       insights.byCategory.reduce((sum, row) => sum + row.events, 0) <= insights.totals.events,
     );
     check('a generation timestamp is included', Boolean(insights.generatedAt));
+  }
+
+  console.log('\n=== Neighbourhood matching (placeKey) ===');
+  {
+    check('dots, spaces and case are ignored', placeKey('R.S. Puram') === placeKey('R S Puram') && placeKey('RS puram') === 'rspuram');
+    check('hyphens and accents are ignored', placeKey('Saibaba-Colony') === placeKey('Saibaba Colony') && placeKey('Café') === 'cafe');
+    check('different places stay different', placeKey('Race Course') !== placeKey('Ram Nagar'));
+
+    const dotted = await createEvent(
+      eventInputSchema.parse({ ...BASE_INPUT, title: 'Verification run: R.S. Puram spelling', neighborhood: 'R.S. Puram' }),
+      ORGANISER,
+    );
+    const bySpacedSpelling = await listEvents({ neighborhood: 'R S Puram', pageSize: 60 });
+    check('filter "R S Puram" finds an event stored as "R.S. Puram"', bySpacedSpelling.items.some((e) => e.id === dotted.id));
+
+    const withCategory = await listEvents({ neighborhood: 'rs puram', category: 'Sports', pageSize: 60 });
+    check('the in-memory neighbourhood filter matches too', withCategory.items.some((e) => e.id === dotted.id));
+
+    const byCity = await listEvents({ city: ' COIMBATORE ', pageSize: 60 });
+    check('city filter ignores case and spaces', byCity.items.some((e) => e.id === dotted.id));
+
+    const options = await getNeighborhoodOptions();
+    check(
+      'neighbourhood suggestions list each place once',
+      options.filter((o) => placeKey(o.name) === 'rspuram').length === 1 &&
+        options.filter((o) => placeKey(o.name) === 'peelamedu').length === 1,
+    );
+  }
+
+  console.log('\n=== Calendar range ===');
+  {
+    // Local midnight today → 8 days later covers BASE_INPUT's "tomorrow".
+    const from = new Date();
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(from.getTime() + 8 * 24 * 60 * 60 * 1000);
+
+    const shown = await createEvent(
+      eventInputSchema.parse({ ...BASE_INPUT, title: 'Verification run: calendar visible event' }),
+      ORGANISER,
+    );
+    const hidden = await createEvent(
+      eventInputSchema.parse({ ...BASE_INPUT, title: 'Verification run: calendar cancelled event' }),
+      ORGANISER,
+    );
+    await cancelEvent(hidden.id, ORGANISER);
+
+    const range = await listEventsInRange({ from, to });
+    check('an event inside the range is returned', range.items.some((e) => e.id === shown.id));
+    check('a cancelled event is never returned', !range.items.some((e) => e.id === hidden.id));
+    check('nothing that has already ended is returned', range.items.every((e) => new Date(e.endsAt).getTime() >= Date.now()));
+    check('results are ordered by start time', range.items.every((e, i, all) => i === 0 || all[i - 1]!.startsAt <= e.startsAt));
+
+    const later = await listEventsInRange({ from: to, to: new Date(to.getTime() + 24 * 60 * 60 * 1000) });
+    check('an event outside the range is not returned', !later.items.some((e) => e.id === shown.id));
+
+    const otherCategory = await listEventsInRange({ from, to, category: 'Music' });
+    check('the category filter applies', !otherCategory.items.some((e) => e.id === shown.id));
+    const sameArea = await listEventsInRange({ from, to, neighborhood: 'PEELAMEDU' });
+    check('the neighbourhood filter applies (placeKey)', sameArea.items.some((e) => e.id === shown.id));
+
+    const iso = (d: Date) => d.toISOString();
+    check('a valid range passes validation', calendarQuerySchema.safeParse({ from: iso(from), to: iso(to) }).success);
+    check(
+      'a range over 6 weeks is rejected',
+      !calendarQuerySchema.safeParse({ from: iso(from), to: iso(new Date(from.getTime() + 50 * 86_400_000)) }).success,
+    );
+    check('to before from is rejected', !calendarQuerySchema.safeParse({ from: iso(to), to: iso(from) }).success);
+    check('a non-ISO date is rejected', !calendarQuerySchema.safeParse({ from: '2026-10-01', to: iso(to) }).success);
+  }
+
+  console.log('\n=== Snap-a-Poster normalisation (no Gemini call) ===');
+  {
+    const context = { today: '2026-10-03', nowTime: '14:00', textOnlySource: null };
+    const base = {
+      isEvent: true,
+      title: 'Street food night',
+      description: 'Stalls from across the city.',
+      category: 'Food',
+      date: '2026-10-05',
+      startTime: '18:00',
+      endTime: '21:00',
+      location: 'Race Course Road',
+      address: null,
+      neighborhood: 'Race Course',
+      city: 'Coimbatore',
+    };
+
+    const clean = normalizeExtraction(base, context);
+    check('a complete extraction is found', clean.found && clean.warnings.length === 0);
+    check('filled lists only non-null fields', !clean.filled.includes('address') && clean.filled.includes('title'));
+
+    const notEvent = normalizeExtraction({ ...base, isEvent: false }, context);
+    check('a non-event returns found=false', !notEvent.found && notEvent.filled.length === 0);
+    check('a non-event carries no invented values', notEvent.fields.title === null && notEvent.fields.date === null);
+
+    const unknownCategory = normalizeExtraction({ ...base, category: 'Party' }, context);
+    check('an unknown category maps to Other', unknownCategory.fields.category === 'Other');
+
+    const badDate = normalizeExtraction({ ...base, date: '2026-02-30' }, context);
+    check('an impossible date is dropped with a warning', badDate.fields.date === null && badDate.warnings.length > 0);
+
+    const past = normalizeExtraction({ ...base, date: '2026-10-01' }, context);
+    check('a past date is kept but warned about', past.fields.date === '2026-10-01' && past.warnings.some((w) => w.includes('already passed')));
+
+    const earlierToday = normalizeExtraction({ ...base, date: '2026-10-03', startTime: '09:00', endTime: '10:00' }, context);
+    check('earlier today counts as passed', earlierToday.warnings.some((w) => w.includes('already passed')));
+
+    const midnight = normalizeExtraction({ ...base, startTime: '21:00', endTime: '01:00' }, context);
+    check('a past-midnight end is cleared with a warning', midnight.fields.endTime === null && midnight.warnings.some((w) => w.includes('midnight')));
+
+    const noEnd = normalizeExtraction({ ...base, endTime: null }, context);
+    check('a missing end time is warned about', noEnd.fields.endTime === null && noEnd.warnings.some((w) => w.includes('end time')));
+
+    const shortTime = normalizeExtraction({ ...base, startTime: '7:30', endTime: '9:00' }, context);
+    check('single-digit hours are zero-padded', shortTime.fields.startTime === '07:30' && shortTime.fields.endTime === '09:00');
+
+    const invented = normalizeExtraction(base, { ...context, textOnlySource: 'Street food night this Monday 6pm at Race Course Road!' });
+    check('a city absent from pasted text is dropped', invented.fields.city === null);
+    check('a neighbourhood present in pasted text is kept', invented.fields.neighborhood === 'Race Course');
+
+    check('an unknown timezone falls back to Asia/Kolkata', resolveTimezone('Mars/Olympus') === 'Asia/Kolkata');
+    check(
+      'wall-clock time follows the timezone',
+      nowInTimezone('Asia/Kolkata', new Date('2026-10-02T20:00:00Z')).date === '2026-10-03',
+    );
   }
 
   await cleanup();

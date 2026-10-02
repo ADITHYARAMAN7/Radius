@@ -67,7 +67,7 @@ const SIGNATURES: Array<{ mime: string; ext: string; match: (b: Buffer) => boole
 ];
 
 /** Returns the actual type of the bytes, or null when they are not a supported image. */
-function detectImageType(buffer: Buffer): { mime: string; ext: string } | null {
+export function detectImageType(buffer: Buffer): { mime: string; ext: string } | null {
   for (const signature of SIGNATURES) {
     if (signature.match(buffer)) return { mime: signature.mime, ext: signature.ext };
   }

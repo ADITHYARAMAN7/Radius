@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, LayoutGrid, Map as MapIcon } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, LayoutGrid, Map as MapIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/Primitives';
 import { EventCard } from '@/components/events/EventCard';
 import { EventFilters } from '@/components/events/EventFilters';
 import { EventMap } from '@/components/events/EventMap';
+import { CalendarView, parseDayKey, toDayKey } from '@/components/events/CalendarView';
 import { EventGridSkeleton, ErrorState, NoEventsFound } from '@/components/common/States';
 import { useDebounced, useEvents } from '@/hooks/useEvents';
 import { useRsvp } from '@/hooks/useRsvp';
@@ -21,7 +22,7 @@ import {
 } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-type ViewMode = 'list' | 'map';
+type ViewMode = 'list' | 'map' | 'calendar';
 
 const PAGE_SIZE = 12;
 
@@ -77,7 +78,12 @@ function readFiltersFromUrl(params: URLSearchParams): EventFiltersState {
   };
 }
 
-function writeFiltersToUrl(filters: EventFiltersState, page: number, view: ViewMode): URLSearchParams {
+function writeFiltersToUrl(
+  filters: EventFiltersState,
+  page: number,
+  view: ViewMode,
+  day: string,
+): URLSearchParams {
   const params = new URLSearchParams();
 
   if (filters.search.trim()) params.set('q', filters.search.trim());
@@ -88,6 +94,8 @@ function writeFiltersToUrl(filters: EventFiltersState, page: number, view: ViewM
   if (filters.sort !== 'soonest') params.set('sort', filters.sort);
   if (page > 1) params.set('page', String(page));
   if (view !== 'list') params.set('view', view);
+  // `date` is already the Today/Weekend filter, so the calendar's selected day is `day`.
+  if (view === 'calendar') params.set('day', day);
 
   // Rounded to ~11 m, which is plenty for a distance filter and keeps the URL from
   // carrying the user's exact position.
@@ -106,7 +114,15 @@ export default function Explore() {
 
   const [filters, setFilters] = useState<EventFiltersState>(() => readFiltersFromUrl(searchParams));
   const [page, setPage] = useState(() => Math.max(1, Number(searchParams.get('page')) || 1));
-  const [view, setView] = useState<ViewMode>(() => (searchParams.get('view') === 'map' ? 'map' : 'list'));
+  const [view, setView] = useState<ViewMode>(() => {
+    const raw = searchParams.get('view');
+    return raw === 'map' || raw === 'calendar' ? raw : 'list';
+  });
+  // Calendar's selected day (and so its month); an invalid ?day= falls back to today.
+  const [day, setDay] = useState(() => {
+    const parsed = parseDayKey(searchParams.get('day'));
+    return toDayKey(parsed ?? new Date());
+  });
   const [aiAvailable, setAiAvailable] = useState(false);
   const [aiProvider, setAiProvider] = useState<AiProvider>('local');
 
@@ -114,7 +130,7 @@ export default function Explore() {
   const debouncedSearch = useDebounced(filters.search, 350);
 
   useEffect(() => {
-    document.title = 'Explore events — Nearby-objects';
+    document.title = 'Explore events — Nearby-Events';
   }, []);
 
   useEffect(() => {
@@ -129,7 +145,7 @@ export default function Explore() {
 
   // Keep the URL in step with the controls, without stacking history entries per keystroke.
   useEffect(() => {
-    setSearchParams(writeFiltersToUrl({ ...filters, search: debouncedSearch }, page, view), {
+    setSearchParams(writeFiltersToUrl({ ...filters, search: debouncedSearch }, page, view, day), {
       replace: true,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -145,6 +161,7 @@ export default function Explore() {
     filters.radiusKm,
     page,
     view,
+    day,
   ]);
 
   const query = useMemo(
@@ -165,6 +182,8 @@ export default function Explore() {
     [debouncedSearch, filters, page, view],
   );
 
+  // Still runs in calendar view: one small page keeps the filter bar's "N events" count
+  // honest; the calendar loads its own date range separately.
   const { data, events, loading, refreshing, error, reload, applyRsvp } = useEvents(query);
   const { toggle, isPending } = useRsvp({ onChange: applyRsvp });
 
@@ -219,14 +238,33 @@ export default function Explore() {
           options={[
             { value: 'list', label: 'List', icon: <LayoutGrid className="h-4 w-4" aria-hidden="true" /> },
             { value: 'map', label: 'Map', icon: <MapIcon className="h-4 w-4" aria-hidden="true" /> },
+            {
+              value: 'calendar',
+              label: 'Calendar',
+              icon: <CalendarDays className="h-4 w-4" aria-hidden="true" />,
+            },
           ]}
         />
 
-        {refreshing && <span className="text-xs font-medium text-ink-muted">Updating…</span>}
+        {refreshing && view !== 'calendar' && <span className="text-xs font-medium text-ink-muted">Updating…</span>}
       </div>
 
       <div className="mt-5">
-        {error ? (
+        {view === 'calendar' ? (
+          <>
+            <p className="mb-4 text-xs text-ink-muted">
+              The calendar uses the category, neighbourhood and city filters. Search, date and sort apply to the
+              list and map.
+            </p>
+            <CalendarView
+              day={day}
+              onDayChange={setDay}
+              category={filters.category}
+              neighborhood={filters.neighborhood}
+              city={filters.city}
+            />
+          </>
+        ) : error ? (
           <ErrorState error={error} onRetry={reload} />
         ) : loading ? (
           <EventGridSkeleton count={6} />

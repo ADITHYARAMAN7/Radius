@@ -1,5 +1,6 @@
 import { getDb } from '../config/firebase';
 import { toIso } from '../utils/dates';
+import { placeKey } from '../utils/search';
 import { CATEGORIES, type Category } from '../types';
 
 export interface InsightsPayload {
@@ -170,6 +171,44 @@ export async function getCategoryCounts(): Promise<Array<{ category: Category; c
   return CATEGORIES.map((category) => ({ category, count: counts.get(category) ?? 0 }));
 }
 
+/**
+ * Suggestions for the neighbourhood filter: the places that actually have upcoming
+ * events. Spellings that share a placeKey ("R.S. Puram" / "R S Puram") are one entry,
+ * shown with whichever spelling is most common.
+ */
+export async function getNeighborhoodOptions(): Promise<Array<{ name: string; count: number }>> {
+  const snapshot = await getDb()
+    .collection('events')
+    .where('status', '==', 'ACTIVE')
+    .select('neighborhood', 'endsAt')
+    .get();
+
+  const now = Date.now();
+  const groups = new Map<string, { count: number; spellings: Map<string, number> }>();
+
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    const endsAt = toIso(data.endsAt);
+    if (!endsAt || new Date(endsAt).getTime() < now) continue;
+
+    const name = String(data.neighborhood ?? '').trim();
+    const key = placeKey(name);
+    if (!key) continue;
+
+    const group = groups.get(key) ?? { count: 0, spellings: new Map<string, number>() };
+    group.count += 1;
+    group.spellings.set(name, (group.spellings.get(name) ?? 0) + 1);
+    groups.set(key, group);
+  }
+
+  return Array.from(groups.values())
+    .map(({ count, spellings }) => ({
+      name: Array.from(spellings.entries()).sort((a, b) => b[1] - a[1])[0]![0],
+      count,
+    }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
 let placeCache: { value: { neighborhoods: string[]; cities: string[] }; expiresAt: number } | null = null;
 
 /**
@@ -186,18 +225,19 @@ export async function getPlaceIndex(): Promise<{ neighborhoods: string[]; cities
     .select('neighborhood', 'city')
     .get();
 
-  const neighborhoods = new Set<string>();
-  const cities = new Set<string>();
+  // Keyed by placeKey so "R.S. Puram" and "R S Puram" are one place, not two.
+  const neighborhoods = new Map<string, string>();
+  const cities = new Map<string, string>();
 
   for (const doc of snapshot.docs) {
     const data = doc.data();
     const neighborhood = String(data.neighborhood ?? '').trim();
     const city = String(data.city ?? '').trim();
-    if (neighborhood) neighborhoods.add(neighborhood);
-    if (city) cities.add(city);
+    if (neighborhood && !neighborhoods.has(placeKey(neighborhood))) neighborhoods.set(placeKey(neighborhood), neighborhood);
+    if (city && !cities.has(placeKey(city))) cities.set(placeKey(city), city);
   }
 
-  const value = { neighborhoods: Array.from(neighborhoods), cities: Array.from(cities) };
+  const value = { neighborhoods: Array.from(neighborhoods.values()), cities: Array.from(cities.values()) };
   placeCache = { value, expiresAt: Date.now() + 60_000 };
   return value;
 }

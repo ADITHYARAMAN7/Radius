@@ -5,7 +5,7 @@ import { EventForm } from '@/components/events/EventForm';
 
 export default function CreateEvent() {
   useEffect(() => {
-    document.title = 'Create an event — Nearby-objects';
+    document.title = 'Create an event — Nearby-Events';
   }, []);
 
   return (

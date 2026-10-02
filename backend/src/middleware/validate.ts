@@ -120,6 +120,30 @@ export const eventQuerySchema = z.object({
   radiusKm: z.coerce.number().min(1).max(500).optional(),
 });
 
+/** A 6-week month grid plus a day of margin either side. */
+const MAX_CALENDAR_SPAN_MS = 43 * 24 * 60 * 60 * 1000;
+
+/**
+ * Month view range. `from`/`to` are instants the browser computed from its own local
+ * midnights, so the server never has to guess the user's timezone.
+ */
+export const calendarQuerySchema = z
+  .object({
+    from: z.string().datetime({ offset: true, message: 'from must be an ISO date-time.' }),
+    to: z.string().datetime({ offset: true, message: 'to must be an ISO date-time.' }),
+    category: categorySchema.optional(),
+    neighborhood: optionalString,
+    city: optionalString,
+  })
+  .superRefine((value, ctx) => {
+    const span = Date.parse(value.to) - Date.parse(value.from);
+    if (!(span > 0)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['to'], message: 'to must be after from.' });
+    } else if (span > MAX_CALENDAR_SPAN_MS) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['to'], message: 'A calendar range can be at most 6 weeks.' });
+    }
+  });
+
 export const profileUpdateSchema = z.object({
   displayName: trimmed(80).min(2, 'Your name needs at least 2 characters.').optional(),
   bio: trimmed(500).optional(),
@@ -136,6 +160,20 @@ export const aiAssistSchema = z.object({
   neighborhood: trimmed(100).optional().default(''),
 });
 
+/**
+ * Snap-a-Poster text fields. They arrive as multipart form fields next to an optional
+ * image, so everything is a string; an unknown timezone falls back in the service.
+ */
+export const aiExtractSchema = z.object({
+  text: z
+    .string()
+    .trim()
+    .max(4000, 'That message is too long — paste up to 4000 characters.')
+    .optional()
+    .default(''),
+  timezone: trimmed(64).optional().default(''),
+});
+
 export const commentSchema = z.object({
   text: z
     .string()
@@ -146,6 +184,22 @@ export const commentSchema = z.object({
 
 export const checkInSchema = z.object({
   code: z.string().trim().min(4, 'Enter the check-in code.').max(12, 'That code is too long.'),
+});
+
+/** Address suggestions while typing (no Google key). */
+export const placeSuggestSchema = z.object({
+  q: trimmed(100).min(3, 'Type at least 3 characters.'),
+});
+
+/** The suggestion the organiser picked, to work out its neighbourhood and city. */
+export const placeResolveSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  name: trimmed(200),
+  kind: trimmed(60).optional().default(''),
+  city: trimmed(100).optional().default(''),
+  county: trimmed(100).optional().default(''),
+  locality: trimmed(100).optional().default(''),
 });
 
 export const geocodeSchema = z

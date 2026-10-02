@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Loader } from '@googlemaps/js-api-loader';
+import { loadMapsLibrary } from '@/lib/maps';
 import { Link } from 'react-router-dom';
 import { MapPinOff } from 'lucide-react';
 import { Badge } from '@/components/ui/Primitives';
@@ -43,18 +43,9 @@ export function EventMap(props: EventMapProps) {
   );
 }
 
-/** Keeps one Loader for the whole session; a second one with different options throws. */
-let loaderPromise: Promise<typeof google.maps> | null = null;
-
+/** The shared loader in lib/maps.ts owns the single Loader instance. */
 function loadMaps(): Promise<typeof google.maps> {
-  if (!MAPS_KEY) return Promise.reject(new Error('Google Maps API key is not configured.'));
-
-  if (!loaderPromise) {
-    const loader = new Loader({ apiKey: MAPS_KEY, version: 'weekly' });
-    loaderPromise = loader.importLibrary('maps').then(() => google.maps);
-  }
-
-  return loaderPromise;
+  return loadMapsLibrary('maps').then(() => google.maps);
 }
 
 /** Muted styling so the event pins are the most prominent thing on the map. */

@@ -156,15 +156,24 @@ export function createApp(): express.Express {
     if (fs.existsSync(distDir)) {
       app.use(
         express.static(distDir, {
-          // Hashed asset filenames are safe to cache hard; index.html must not be.
+          // Hashed asset filenames are safe to cache hard; index.html must not be, and
+          // neither must the PWA manifest, whose name never changes between deploys.
           setHeaders(res, filePath) {
-            if (filePath.endsWith('index.html')) res.setHeader('Cache-Control', 'no-cache');
+            if (filePath.endsWith('index.html') || filePath.endsWith('.webmanifest')) {
+              res.setHeader('Cache-Control', 'no-cache');
+            }
             else res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
           },
         }),
       );
 
-      app.get('*', (_req, res) => {
+      app.get('*', (req, res) => {
+        // A missing file (e.g. /assets/old-hash.js after a deploy) must 404, not come back
+        // as HTML — the browser would otherwise fail with a confusing MIME-type error.
+        if (path.extname(req.path)) {
+          res.status(404).end();
+          return;
+        }
         res.sendFile(path.join(distDir, 'index.html'));
       });
 

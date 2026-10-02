@@ -8,6 +8,20 @@ export function normalise(value: string): string {
 }
 
 /**
+ * Matching key for neighbourhood and city names: lowercase letters and digits only.
+ * Google writes "R.S. Puram", people write "R S Puram" or "RS Puram" — all become
+ * "rspuram", so the neighbourhood filter treats them as the same place.
+ * Kept separate from normalise(), which keyword search relies on.
+ */
+export function placeKey(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+/**
  * Tokens stored on the document so a keyword match never requires reading the whole
  * description. Firestore has no full-text index; keeping tokens on the document is
  * what makes the in-memory relevance pass cheap.

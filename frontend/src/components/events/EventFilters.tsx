@@ -86,6 +86,20 @@ export function EventFilters({
   const [locating, setLocating] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * Suggestions for the neighbourhood box: places that actually have upcoming events.
+   * Fetched once, the first time the panel opens. It stays a free-text box, so a typed
+   * or AI-filled area that is not in the list still works.
+   */
+  const [neighborhoodOptions, setNeighborhoodOptions] = useState<Array<{ name: string; count: number }> | null>(null);
+  useEffect(() => {
+    if (!showAdvanced || neighborhoodOptions) return;
+    api
+      .neighborhoods()
+      .then((result) => setNeighborhoodOptions(result.neighborhoods))
+      .catch(() => setNeighborhoodOptions([]));
+  }, [showAdvanced, neighborhoodOptions]);
+
   const hasLocation = filters.lat !== null && filters.lng !== null;
 
   const activeCount =
@@ -369,8 +383,17 @@ export function EventFilters({
               value={filters.neighborhood}
               onChange={(changeEvent) => onChange({ neighborhood: changeEvent.target.value })}
               placeholder="e.g. Gandhipuram"
+              list="neighborhood-suggestions"
+              autoComplete="off"
               className="h-10 w-full rounded-xl bg-surface px-3.5 text-sm text-ink ring-1 ring-inset ring-border focus:outline-none focus:ring-2 focus:ring-brand"
             />
+            <datalist id="neighborhood-suggestions">
+              {neighborhoodOptions?.map((option) => (
+                <option key={option.name} value={option.name}>
+                  {`${option.count} upcoming`}
+                </option>
+              ))}
+            </datalist>
           </div>
 
           <div className="space-y-1.5">

@@ -15,7 +15,7 @@
 
 **Nearby-Events** is a modern, cloud-native digital community bulletin board designed to help local residents discover, post, share, and RSVP to neighborhood events, garage sales, sports games, workshops, and meetups.
 
-It replaces the fragmentation and clutter of physical corkboards and generic social media feeds with a hyper-local, real-time, and AI-enhanced experience powered by **Google Cloud Run**, **Cloud Firestore**, **Google Cloud Storage**, **Vertex AI / Gemini 1.5 Flash**, and **Firebase Authentication**.
+It replaces the fragmentation and clutter of physical corkboards and generic social media feeds with a hyper-local, real-time, and AI-enhanced experience powered by **Google Cloud Run**, **Cloud Firestore**, **Google Cloud Storage**, **Gemini** (default `gemini-3.8-flash`, via the Gemini API or Vertex AI), **Firebase Authentication** and **Google Maps Platform**.
 
 ---
 
@@ -23,16 +23,28 @@ It replaces the fragmentation and clutter of physical corkboards and generic soc
 
 ### 🎯 Use Case 5 Core Requirements
 - 🗂️ **Grid Board Layout**: Clean, responsive card grid layout showing upcoming community gatherings.
-- ⏱️ **Automatic Date Sorting**: Events happening next appear first using compound indexed Firestore queries (`date ASC, time ASC`).
-- 🧹 **Automatic Expiration Logic**: Past events older than today are automatically flagged/hidden from active feeds and preserved in a dedicated past events archive.
+- ⏱️ **Automatic Date Sorting**: The next event appears top-left; Firestore orders by each event's start time (`startsAt ASC`).
+- 🧹 **Automatic Expiration Logic**: An event leaves the board as soon as its end time passes; a protected endpoint (for Cloud Scheduler) marks old events `EXPIRED`, and they stay viewable under "Past / Expired".
 - 👍 **"I'm Going" 1-Click RSVP Counter**: Real-time RSVP button with optimistic state updates, duplicate prevention, and attendee lists.
-- 🏷️ **Color-Coded Category Badges**: Distinct visual tags for **Sports**, **Music**, **Food**, **Yard Sale**, **Technology**, **Education**, and **Community**.
-- 📍 **Neighborhood & Location Search**: Instant search and filtering by neighborhood name, city, keyword, or distance radius.
-- 🔗 **Shareable Deep Links**: Direct permalinks (`/events/:id`) with 1-click clipboard copy and native mobile Web Share API support.
-- 🤖 **Gemini 1.5 AI Event Assistant**: AI auto-generation of engaging titles, detailed descriptions, and smart tags from short notes or prompts.
+- 🏷️ **Color-Coded Category Badges**: Distinct visual tags for **Sports**, **Music**, **Food**, **Yard Sale**, **Technology**, **Education**, **Community** and **Other**.
+- 📍 **Neighborhood & Location Search**: Search and filter by neighbourhood (with suggestions of areas that have upcoming events), city, keyword or distance radius. Spelling-proof matching: "R.S. Puram" = "R S Puram" = "RS Puram".
+- 🔗 **Shareable Deep Links**: Direct permalinks (`/events/:id`) with 1-click clipboard copy, native mobile Web Share API support and a printable QR flyer.
+
+### 🤖 AI features (Gemini)
+- 📸 **Snap-a-Poster** *(idea by Adhi)*: upload a poster photo or paste a forwarded WhatsApp message; Gemini pre-fills the post form for the organiser to check. Resolves "this Saturday 7pm" in the user's timezone, warns about past dates / missing end times / overnight events, never invents a place or date, ignores instructions hidden in pasted text, never auto-posts. Needs a Gemini key.
+- ✍️ **AI Event Assistant**: turns a short note into a clearer title, description, category and tags; you pick which suggestions to keep.
+- 🔎 **Natural-language search**: "sports this weekend in Gandhipuram" becomes board filters (`POST /api/ai/search`).
+- 🛟 **Resilient by design**: each Gemini call has a timeout and one retry on a fallback model (`gemini-3.5-flash`) when the main model is overloaded; the assistant and search then fall back to the built-in rule-based engine. AI is never required to post.
 
 ### ✨ Extended Platform Capabilities
-- 🗺️ **Interactive Maps View**: Embedded interactive map (Leaflet / Google Maps API) with category-specific pins and location popups.
+- 🗓️ **Month Calendar View**: Explore → List · Map · **Calendar**; event counts and category dots per day, click a day for its events, shareable `?view=calendar&day=…` link. Days follow the viewer's timezone.
+- ⭐ **Recommended for You**: a Local Relevance Score (distance, interests, timing, freshness, engagement) with plain-language reasons (`GET /api/events/recommended`).
+- 📈 **Trending / Event Pulse**: events with fast-growing recent engagement, labelled Trending / Growing / Steady (`GET /api/events/trending`).
+- 🔥 **"Popular" Badge**: cards and event pages mark events with 55+ RSVPs.
+- 🗺️ **Interactive Maps View**: Google Maps with a key, otherwise a Leaflet/OpenStreetMap map — category-specific pins and location popups either way.
+- 📍 **Address suggestions as you type**: with a Maps key, Google Places (API New); without one, OpenStreetMap suggestions via Photon (`GET /api/places/suggest`, server-side, cached). Picking a place fills the venue, address, neighbourhood (snapped to the board's spelling, e.g. "R.S. Puram"), city and map pin either way.
+- 🎙️ **Voice search** in Chrome/Edge (Web Speech API, Indian English; needs internet and microphone permission). Hidden in browsers without speech support.
+- 📱 **Installable on Phones**: web app manifest and icons for "Add to Home Screen".
 - 🖼️ **Cloud Storage Cover Photos**: Secure image upload to Google Cloud Storage with size limits, validation, and CDN caching.
 - 🔎 **Natural Language Search Intent AI**: Conversational natural-language query parsing (`POST /api/ai/search`) powered by Gemini.
 - 👤 **User Profiles & Dashboards**: Dedicated pages for created events (`/my-events`), attending events (`/my-rsvps`), and profile management (`/profile`).
@@ -60,7 +72,7 @@ It replaces the fragmentation and clutter of physical corkboards and generic soc
 | **Compute / API Server** | **Google Cloud Run** | Serverless, autoscaling container hosting the Express + TypeScript API engine. Supports single-container deployment serving both API and static frontend SPA. |
 | **Database** | **Cloud Firestore** | NoSQL document database providing real-time synchronization, composite indexing (`date ASC, time ASC`), and secure rules. |
 | **Object Storage** | **Google Cloud Storage** | Highly available bucket storage for uploaded event images and public assets with CDN caching. |
-| **Generative AI** | **Vertex AI / Gemini 1.5 Flash** | AI service handling event content enhancement (`/api/ai/assist`) and natural language search intent parsing (`/api/ai/search`). |
+| **Generative AI** | **Gemini API / Vertex AI** | Snap-a-Poster (`/api/ai/extract`), content enhancement (`/api/ai/assist`) and search intent (`/api/ai/search`); `gemini-3.8-flash` with a `gemini-3.5-flash` fallback, built-in rules when there is no key. |
 | **Identity & Auth** | **Firebase Authentication** | Secure user registration, sign-in, token issuance, and server-side JWT verification via Firebase Admin SDK. |
 | **Logging & Telemetry** | **Google Cloud Logging** | Structured JSON logging with request tracing, correlation IDs, and runtime execution metrics. |
 
@@ -95,7 +107,7 @@ Nearby-Events/
 │   ├── tailwind.config.js
 │   └── vite.config.ts
 ├── scripts/
-│   └── seed-events.ts            # Realistic seed script (36 upcoming & past events)
+│   └── seed-events.ts            # Realistic seed script (43 upcoming & past events)
 ├── docs/                         # Hackathon submission documentation & presentation material
 │   ├── cognizant-hackathon-report.md  # 5-page submission report
 │   ├── presentation-slides.md         # 10-slide ready presentation deck
@@ -163,30 +175,35 @@ npm run install:all
 ### 2. Environment Configuration
 
 #### Backend Environment (`backend/.env`)
-Create `backend/.env`:
+Create `backend/.env` from `backend/.env.example` (full list of options there):
 ```env
-PORT=5000
+PORT=8080
 NODE_ENV=development
 SERVE_STATIC=false
 CORS_ORIGINS=http://localhost:5173
 
-# Option A: Service Account Key Path
+GCP_PROJECT_ID=your_project_id
+# Service account key, kept OUTSIDE git (.gitignore blocks service-account*.json)
 GOOGLE_APPLICATION_CREDENTIALS=./service-account.json
 
-# Option B: Or use Firestore Emulator for offline development
-# FIRESTORE_EMULATOR_HOST=localhost:8081
-
-# Gemini AI Key (Vertex AI or Google AI Studio)
+# Gemini (Google AI Studio key). Leave empty to use the built-in rule-based assistant.
 GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-3.8-flash
+GEMINI_FALLBACK_MODEL=gemini-3.5-flash
 
-# Cloud Storage Bucket Name
-GCS_BUCKET_NAME=your_gcs_bucket_name
+# Cloud Storage bucket name (no gs:// prefix)
+GCS_BUCKET=your_gcs_bucket_name
 ```
+
+> **Only want to add a Gemini key to local mode?** Put just `GEMINI_API_KEY=…` in `backend/.env` —
+> without a project ID, local mode stays on and Snap-a-Poster / AI use real Gemini.
 
 #### Frontend Environment (`frontend/.env`)
 Create `frontend/.env`:
 ```env
-VITE_API_BASE_URL=http://localhost:5000/api
+# Leave empty: Vite proxies /api to the API on :8080
+VITE_API_BASE_URL=
+VITE_GOOGLE_MAPS_API_KEY=your_maps_key   # optional: Google map + Places autocomplete
 VITE_FIREBASE_API_KEY=your_firebase_api_key
 VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=your_project_id
@@ -197,9 +214,9 @@ VITE_FIREBASE_APP_ID=your_app_id
 
 ---
 
-### 3. Seed Realistic Demo Data (36 Events)
+### 3. Seed Realistic Demo Data (43 Events)
 
-The dataset includes **36 realistic community events** (29 upcoming across 7 categories and 7 expired events to demonstrate automatic archiving):
+The dataset includes **43 realistic community events** (35 upcoming — one always "live now" for the check-in demo — and 8 past events to demonstrate automatic archiving) across 15 Coimbatore neighbourhoods. Dates are relative to the day you seed, so **re-seed on the morning of a demo**:
 
 ```bash
 # Populate Firestore with seed events
@@ -213,16 +230,16 @@ npm run seed:clear
 
 ### 4. Run Development Servers
 
-Run both Backend API and Frontend Web App concurrently:
+Run both Backend API and Frontend Web App against your Google Cloud project:
 
 ```bash
-npm run dev
+npm run dev:cloud
 ```
 
 Or start them individually in separate terminals:
 
 ```bash
-# Terminal 1: Backend API (Port 5000)
+# Terminal 1: Backend API (Port 8080 — Vite proxies /api here)
 npm run dev:api
 
 # Terminal 2: Frontend App (Port 5173)
@@ -240,6 +257,10 @@ Open `http://localhost:5173` in your browser to experience **Nearby-Events**!
 | `/api/health` | `GET` | Public | System health status & service availability checks. |
 | `/api/stats` | `GET` | Public | Aggregate platform statistics (total events, RSVPs, categories). |
 | `/api/events` | `GET` | Optional | List active events with filters (search, category, neighborhood, city, radius, date). |
+| `/api/events/calendar` | `GET` | Optional | Every event starting in a date range (`from`, `to`; at most 6 weeks) for the month view. |
+| `/api/events/recommended` | `GET` | Optional | Events ranked by the Local Relevance Score, with reasons. |
+| `/api/events/trending` | `GET` | Public | Events with fast-growing recent engagement (Event Pulse). |
+| `/api/neighborhoods` | `GET` | Public | Neighbourhoods with upcoming events, for the filter suggestions. |
 | `/api/events/:id` | `GET` | Optional | Retrieve event details, related events, and attendee roster. |
 | `/api/events` | `POST` | Required | Create a new community event. |
 | `/api/events/:id` | `PATCH` | Required | Update an event (Owner only). |
@@ -258,7 +279,8 @@ Open `http://localhost:5173` in your browser to experience **Nearby-Events**!
 | `/api/community/leaderboard` | `GET` | Public | Most active neighbours and the points rules. |
 | `/api/geocode` | `POST` | Required | Look up map coordinates for a written address. |
 | `/api/ai/status` | `GET` | Public | Check assistant readiness and which engine answers (Gemini or built-in). |
-| `/api/ai/assist` | `POST` | Required | Auto-generate title, description, and tags via Gemini 1.5. |
+| `/api/ai/assist` | `POST` | Required | Suggest a clearer title, description, category and tags (Gemini, or the built-in assistant). |
+| `/api/ai/extract` | `POST` | Required | Snap-a-Poster: poster image and/or pasted text (multipart) → form values + warnings. Needs Gemini. |
 | `/api/ai/search` | `POST` | Required | Natural-language query parsing into structured filters. |
 | `/api/uploads/image` | `POST` | Required | Upload event cover photo to Google Cloud Storage. |
 | `/api/me/session` | `POST` | Required | Sync/initialize current user's profile. |
@@ -270,9 +292,9 @@ Open `http://localhost:5173` in your browser to experience **Nearby-Events**!
 
 ---
 
-## 📊 Dataset Overview (36 Seed Events)
+## 📊 Dataset Overview (43 Seed Events)
 
-The seed generator (`scripts/seed-events.ts`) populates **36 high-quality community events** categorized into 7 core domains:
+The seed generator (`scripts/seed-events.ts`) populates **43 community events** (35 upcoming, 8 past) across 15 Coimbatore neighbourhoods and 7 categories — including **5 at Amrita Vishwa Vidyapeetham, Ettimadai** and one event that is always **live now** (check-in code `NEARBY`):
 
 - ⚽ **Sports**: 7-a-side Football, Race Course 5K Run, Badminton Ladder, Sunset Vinyasa Yoga.
 - 🎵 **Music**: Carnatic Fusion Night, Acoustic Open Mic, Peelamedu Vinyl Lounge, Community Choir.
@@ -281,7 +303,8 @@ The seed generator (`scripts/seed-events.ts`) populates **36 high-quality commun
 - 📚 **Education**: Spoken English Confidence Circle, Kids Hydraulic STEM Workshop, Urban Gardening, Youth Financial Literacy.
 - 🤝 **Community**: Noyyal Riverbank Cleanup, 200 Native Trees Planting, Community Repair Café, Board Game Social.
 - 🏷️ **Yard Sale**: Multi-Family Street Clearance, Flat Liquidation Moving Sale, Vintage Books & Records Swap, Plant & Seed Swap, Kids Toy Clear-out.
-- ⌛ **Expired Events Archive**: 7 past events to verify automatic date filtering and past event tabs.
+- 🎓 **Amrita / Ettimadai**: GCP Study Jam and Campus Cultural Night (same day), Inter-College 3v3 Basketball, Hostel Food Stall Day, Book & Gadget Swap.
+- ⌛ **Expired Events Archive**: 8 past events to verify automatic date filtering and past event tabs.
 
 ---
 

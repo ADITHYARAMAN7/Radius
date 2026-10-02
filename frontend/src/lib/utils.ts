@@ -118,6 +118,17 @@ export function formatRsvpCount(count: number): string {
   return `${count.toLocaleString()} people are going`;
 }
 
+/**
+ * RSVPs at which an event gets the "Popular" badge. Tuned on the demo data so roughly
+ * the top fifth of upcoming events qualify (7 of 34 at 55); 25 would mark almost all.
+ */
+export const POPULAR_RSVP_THRESHOLD = 55;
+
+/** Popular only while it can still be joined — a full past event is history, not a hint. */
+export function isPopular(event: EventRecord): boolean {
+  return event.status === 'ACTIVE' && !hasFinished(event) && event.rsvpCount >= POPULAR_RSVP_THRESHOLD;
+}
+
 export function hasFinished(event: EventRecord): boolean {
   return new Date(event.endsAt).getTime() < Date.now();
 }

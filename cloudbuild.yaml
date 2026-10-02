@@ -59,7 +59,8 @@ steps:
     args:
       - build
       - --file=docker/Dockerfile
-      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA
+      # BUILD_ID, not COMMIT_SHA: COMMIT_SHA is empty for a manual `gcloud builds submit`.
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID
       - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest
       # Empty string keeps the SPA on same-origin /api, which is what the
       # single-service deployment wants.
@@ -90,7 +91,7 @@ steps:
       - run
       - deploy
       - ${_SERVICE}
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
@@ -100,11 +101,12 @@ steps:
       - --min-instances=0
       - --max-instances=10
       - --timeout=60s
-      - --set-env-vars=NODE_ENV=production,SERVE_STATIC=true,GCP_PROJECT_ID=$PROJECT_ID,GCS_BUCKET=${_BUCKET},AI_PROVIDER=${_AI_PROVIDER},VERTEX_LOCATION=${_VERTEX_LOCATION}
+      # TZ: the Today / Tomorrow / Weekend filters use the server's local day; Cloud Run defaults to UTC.
+      - --set-env-vars=NODE_ENV=production,TZ=Asia/Kolkata,SERVE_STATIC=true,GCP_PROJECT_ID=$PROJECT_ID,GCS_BUCKET=${_BUCKET},AI_PROVIDER=${_AI_PROVIDER},VERTEX_LOCATION=${_VERTEX_LOCATION}
       - --set-secrets=GEMINI_API_KEY=gemini-api-key:latest,MAINTENANCE_TOKEN=maintenance-token:latest
 
 images:
-  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$BUILD_ID
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest
 
 timeout: 1200s
