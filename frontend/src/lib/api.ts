@@ -9,8 +9,10 @@ import type {
   EventRecord,
   InsightsPayload,
   Paginated,
+  RecommendedEvent,
   RsvpResult,
   SearchIntent,
+  TrendingEvent,
   UserProfile,
 } from './types';
 
@@ -231,5 +233,50 @@ export const api = {
       formData: form,
       auth: true,
     });
+  },
+
+  /**
+   * Fetch upcoming active events ranked by Local Relevance Score.
+   * Auth is optional — signed-in users get isAttending/isOwner enrichment.
+   *
+   * This is a heuristic ranking (not an ML prediction) based on:
+   * distance, category interests, time-until-event, freshness, and engagement.
+   */
+  recommended: (params: {
+    lat?: number;
+    lng?: number;
+    interests?: string[];
+    page?: number;
+    pageSize?: number;
+  } = {}) => {
+    const query = new URLSearchParams();
+    if (params.lat != null && Number.isFinite(params.lat)) query.set('lat', String(params.lat));
+    if (params.lng != null && Number.isFinite(params.lng)) query.set('lng', String(params.lng));
+    if (params.interests && params.interests.length > 0) query.set('interests', params.interests.join(','));
+    if (params.page && params.page > 1) query.set('page', String(params.page));
+    if (params.pageSize) query.set('pageSize', String(params.pageSize));
+    const qs = query.toString();
+    return request<Paginated<RecommendedEvent>>(`/events/recommended${qs ? `?${qs}` : ''}`);
+  },
+
+  /**
+   * Fetch upcoming active events ranked by community momentum (Pulse Score).
+   * Measures RECENT engagement growth (e.g. RSVPs in the last 7 days) rather than lifetime totals.
+   */
+  trending: (params: {
+    page?: number;
+    pageSize?: number;
+    category?: string;
+    neighborhood?: string;
+    city?: string;
+  } = {}) => {
+    const query = new URLSearchParams();
+    if (params.page && params.page > 1) query.set('page', String(params.page));
+    if (params.pageSize) query.set('pageSize', String(params.pageSize));
+    if (params.category) query.set('category', params.category);
+    if (params.neighborhood) query.set('neighborhood', params.neighborhood);
+    if (params.city) query.set('city', params.city);
+    const qs = query.toString();
+    return request<Paginated<TrendingEvent>>(`/events/trending${qs ? `?${qs}` : ''}`);
   },
 };
