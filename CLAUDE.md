@@ -41,8 +41,9 @@ Two teammates built separate versions. **Decision: Kanish's version (`main` bran
 Adhi's Flask version is a prototype; we only port ideas from it (see §6).
 
 ### Branches — what we take from where
-- `main` = the foundation. **Never commit to main, never merge into main.** All work goes on `suhas-dev`,
-  pushed to `origin/suhas-dev`. At the very end: one pull request `suhas-dev → main` for Kanish to review.
+- `main` = the shared, working version. On Oct 3 Suhas merged PR #2 (`suhas-dev → main`), so `main` now has
+  everything from both branches. Still: never commit to `main` directly — work on a branch (`suhas-dev`),
+  pull `main` into it first, then open a PR.
 - `thahseen` = identical to main (same commit) — ignore it.
 - `adhi` = separate Flask app. **Do not merge it or copy its code.** We only RE-IMPLEMENT one idea from it
   (Snap-a-Poster) properly inside main's architecture. Do NOT bring over: in-memory storage, device-id RSVP
@@ -372,3 +373,10 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   website and with no referrer) — restrict it (HTTP referrers + API restriction + Places daily cap) before
   deploying. Card for GCP billing was failing; Cloud Run/Storage still blocked on billing (teammate card or
   mentor credits). Gemini: still free-tier quota.
+- Oct 3: **Feature work complete on localhost; PR #2 merged into `main` by Suhas's decision** (Kanish's review
+  skipped to start cloud work). Verified before merging: every non-Gemini feature works locally (full Chrome QA,
+  Google map + Places live). Gemini works but the free key hits "429 quota" after a few requests — needs a
+  billing-enabled key for the demo. Not code but still to do: real Google sign-in + real Firestore (free
+  Firebase setup: web config + service-account key), lock the Maps key, Firestore rule for check-in codes
+  (Kanish), billing (card/credits) for Cloud Run + Storage + Scheduler + monitoring, deck/video/report.
+  **Next: cloud integration** (deployment checklist in §3).
