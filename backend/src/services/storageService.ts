@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { capabilities, env } from '../config/env';
 import { getBucket } from '../config/firebase';
@@ -13,6 +14,20 @@ const ALLOWED_MIME = new Map<string, string>([
 ]);
 
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+/** URL prefix the API serves locally stored photos from — see the uploads router. */
+export const LOCAL_UPLOADS_ROUTE = '/api/uploads/files';
+
+/** True for an image URL this API produced itself when storing a photo on local disk. */
+export function isLocalUploadUrl(value: string): boolean {
+  return /^\/api\/uploads\/files\/events\/[A-Za-z0-9_-]+\/[A-Za-z0-9._-]+$/.test(value);
+}
+
+/** Resolves an object path inside the local uploads folder, refusing anything that escapes it. */
+function localFilePath(objectPath: string): string | null {
+  const absolute = path.resolve(env.localUploadsDir, objectPath);
+  return absolute.startsWith(env.localUploadsDir + path.sep) ? absolute : null;
+}
 
 /**
  * Magic-byte signatures, because `file.mimetype` is whatever the client wrote in the
@@ -134,6 +149,19 @@ export async function uploadEventImage(
 
   const objectPath = `events/${uid}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}-${safeStem}${extension}`;
 
+  // No bucket in development: keep the photo on disk and let the API serve it, so the
+  // create-event flow is fully usable without a Google Cloud project.
+  if (capabilities.localStorage) {
+    const target = localFilePath(objectPath);
+    if (!target) throw AppError.badRequest('That file name is not valid.');
+
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, file.buffer);
+
+    logger.info('Event image stored locally', { objectPath, uid, bytes: file.size });
+    return { imageUrl: `${LOCAL_UPLOADS_ROUTE}/${objectPath}`, imagePath: objectPath };
+  }
+
   const bucket = getBucket();
   const blob = bucket.file(objectPath);
 
@@ -166,6 +194,13 @@ export async function deleteImage(objectPath: string): Promise<void> {
   if (!capabilities.storage || !objectPath) return;
 
   try {
+    if (capabilities.localStorage) {
+      const target = localFilePath(objectPath);
+      if (target) await fs.rm(target, { force: true });
+      logger.info('Local event image deleted', { objectPath });
+      return;
+    }
+
     await getBucket().file(objectPath).delete({ ignoreNotFound: true });
     logger.info('Event image deleted', { objectPath });
   } catch (error) {

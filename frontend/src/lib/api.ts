@@ -1,13 +1,19 @@
 import { getIdToken } from './firebase';
 import type {
+  AiProvider,
   AiSuggestion,
   Attendee,
   CategoryCount,
+  CheckInResult,
+  EventComment,
   EventDetailResponse,
   EventFiltersState,
   EventFormPayload,
   EventRecord,
+  EventWeather,
+  GeocodeResult,
   InsightsPayload,
+  LeaderboardPayload,
   Paginated,
   RecommendedEvent,
   RsvpResult,
@@ -58,7 +64,42 @@ interface RequestOptions {
   formData?: FormData;
 }
 
+/**
+ * In local mode the API starts the Firebase emulators itself, which takes a few seconds.
+ * While that is happening it answers 503 LOCAL_STACK_STARTING; waiting and asking again
+ * here means every page simply loads a moment later, rather than each one needing its
+ * own retry button.
+ */
+const STARTING_RETRY_MS = 2000;
+const STARTING_MAX_RETRIES = 45;
+
+function wait(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(resolve, ms);
+    signal?.addEventListener(
+      'abort',
+      () => {
+        window.clearTimeout(timer);
+        reject(new DOMException('Aborted', 'AbortError'));
+      },
+      { once: true },
+    );
+  });
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await requestOnce<T>(path, options);
+    } catch (error) {
+      const starting = error instanceof ApiError && error.code === 'LOCAL_STACK_STARTING';
+      if (!starting || attempt >= STARTING_MAX_RETRIES) throw error;
+      await wait(STARTING_RETRY_MS, options.signal);
+    }
+  }
+}
+
+async function requestOnce<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, auth = false, signal, formData } = options;
 
   const headers: Record<string, string> = {};
@@ -210,7 +251,7 @@ export const api = {
 
   insights: () => request<InsightsPayload>('/insights'),
 
-  aiStatus: () => request<{ available: boolean }>('/ai/status'),
+  aiStatus: () => request<{ available: boolean; provider?: AiProvider }>('/ai/status'),
 
   aiAssist: (input: {
     title: string;
@@ -222,6 +263,48 @@ export const api = {
 
   aiSearch: (query: string) =>
     request<{ intent: SearchIntent }>('/ai/search', { method: 'POST', body: { query }, auth: true }),
+
+  /* ------------------------------------------------- comments (Q&A thread) */
+
+  listComments: (id: string, signedIn: boolean, signal?: AbortSignal) =>
+    request<{ comments: EventComment[]; total: number }>(`/events/${id}/comments`, {
+      auth: signedIn,
+      signal,
+    }),
+
+  addComment: (id: string, text: string) =>
+    request<{ comment: EventComment }>(`/events/${id}/comments`, {
+      method: 'POST',
+      body: { text },
+      auth: true,
+    }),
+
+  deleteComment: (id: string, commentId: string) =>
+    request<void>(`/events/${id}/comments/${commentId}`, { method: 'DELETE', auth: true }),
+
+  /* ------------------------------------------------------------- saved */
+
+  saveEvent: (id: string) =>
+    request<{ saved: boolean }>(`/events/${id}/save`, { method: 'POST', auth: true }),
+
+  unsaveEvent: (id: string) =>
+    request<{ saved: boolean }>(`/events/${id}/save`, { method: 'DELETE', auth: true }),
+
+  mySaved: () => request<{ events: EventRecord[]; total: number }>('/me/saved', { auth: true }),
+
+  /* ------------------------------------------- check-in, weather, community */
+
+  checkIn: (id: string, code: string) =>
+    request<CheckInResult>(`/events/${id}/checkin`, { method: 'POST', body: { code }, auth: true }),
+
+  eventWeather: (id: string, signal?: AbortSignal) =>
+    request<{ weather: EventWeather }>(`/events/${id}/weather`, { signal }),
+
+  /** Looks up map coordinates for a written address. `result` is null when nothing matched. */
+  geocode: (place: { address: string; neighborhood: string; city: string }) =>
+    request<{ result: GeocodeResult | null }>('/geocode', { method: 'POST', body: place, auth: true }),
+
+  leaderboard: () => request<LeaderboardPayload>('/community/leaderboard'),
 
   uploadStatus: () => request<{ available: boolean; maxBytes: number }>('/uploads/status'),
 

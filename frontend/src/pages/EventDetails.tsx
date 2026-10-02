@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowLeft,
+  BadgeCheck,
   CalendarDays,
   Clock,
   ExternalLink,
@@ -21,13 +22,17 @@ import { CalendarExport } from '@/components/events/CalendarExport';
 import { EventQrCode } from '@/components/events/EventQrCode';
 import { EventCard } from '@/components/events/EventCard';
 import { EventMap } from '@/components/events/EventMap';
+import { CheckInPanel } from '@/components/events/CheckInPanel';
+import { EventComments } from '@/components/events/EventComments';
+import { EventWeatherCard } from '@/components/events/EventWeatherCard';
+import { SaveButton } from '@/components/events/SaveButton';
 import { ErrorState, EventDetailSkeleton } from '@/components/common/States';
 import { useAuth } from '@/context/AuthContext';
 import { useRsvp } from '@/hooks/useRsvp';
 import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/components/ui/Toast';
 import { api, ApiError } from '@/lib/api';
-import type { Attendee, EventRecord } from '@/lib/types';
+import type { Attendee, CheckInResult, EventRecord } from '@/lib/types';
 import {
   formatEventDateLong,
   formatRelative,
@@ -123,6 +128,9 @@ function AttendeeList({ attendees, total }: { attendees: Attendee[]; total: numb
           >
             <Avatar name={attendee.displayName} src={attendee.photoURL} size="xs" />
             <span className="text-xs font-medium text-ink">{attendee.displayName}</span>
+            {attendee.checkedIn && (
+              <BadgeCheck className="-ml-0.5 h-3.5 w-3.5 text-success" aria-label="Checked in" />
+            )}
           </div>
         ))}
 
@@ -138,6 +146,7 @@ function AttendeeList({ attendees, total }: { attendees: Attendee[]; total: numb
 
 export default function EventDetails() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const toast = useToast();
   const { user, initialising } = useAuth();
@@ -152,6 +161,17 @@ export default function EventDetails() {
   const [deleting, setDeleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [nonce, setNonce] = useState(0);
+
+  // The organiser's QR code links here with ?checkin=CODE. Captured once, so the code can
+  // be taken out of the address bar without losing it.
+  const [checkInCode] = useState(() => searchParams.get('checkin') ?? '');
+
+  useEffect(() => {
+    if (!searchParams.has('checkin')) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('checkin');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!id || initialising) return;
@@ -208,6 +228,7 @@ export default function EventDetails() {
               displayName: user.displayName || 'You',
               photoURL: user.photoURL ?? null,
               createdAt: new Date().toISOString(),
+              checkedIn: false,
             },
             ...without,
           ];
@@ -218,6 +239,37 @@ export default function EventDetails() {
   );
 
   const { toggle, isPending } = useRsvp({ onChange: applyRsvp });
+
+  const onCheckedIn = useCallback(
+    (result: CheckInResult) => {
+      setEvent((current) =>
+        current
+          ? {
+              ...current,
+              isAttending: true,
+              isCheckedIn: true,
+              rsvpCount: result.rsvpCount,
+              checkedInCount: result.checkedInCount,
+            }
+          : current,
+      );
+
+      if (!user) return;
+
+      // A walk-in was not on the list before; either way they now carry the tick.
+      setAttendees((current) => [
+        {
+          uid: user.uid,
+          displayName: user.displayName || 'You',
+          photoURL: user.photoURL ?? null,
+          createdAt: new Date().toISOString(),
+          checkedIn: true,
+        },
+        ...current.filter((attendee) => attendee.uid !== user.uid),
+      ]);
+    },
+    [user],
+  );
 
   const onDelete = async () => {
     if (!event) return;
@@ -435,6 +487,8 @@ export default function EventDetails() {
                   </dd>
                 </div>
               </Card>
+
+              <EventWeatherCard event={event} />
             </dl>
 
             {/* ----------------------------------------------- description */}
@@ -475,11 +529,21 @@ export default function EventDetails() {
                 <Users className="h-5 w-5 text-brand" aria-hidden="true" />
                 Who&rsquo;s going
               </h2>
-              <p className="mt-1 text-sm font-semibold text-ink">{formatRsvpCount(event.rsvpCount)}</p>
+              <p className="mt-1 text-sm font-semibold text-ink">
+                {formatRsvpCount(event.rsvpCount)}
+                {event.checkedInCount > 0 && (
+                  <span className="font-medium text-ink-soft">
+                    {' '}
+                    · <span className="tabular-nums">{event.checkedInCount}</span> checked in
+                  </span>
+                )}
+              </p>
               <div className="mt-4">
                 <AttendeeList attendees={attendees} total={event.rsvpCount} />
               </div>
             </section>
+
+            <EventComments event={event} />
           </div>
 
           {/* ----------------------------------------------------- sidebar */}
@@ -499,6 +563,10 @@ export default function EventDetails() {
                 size="lg"
                 full
               />
+
+              <CheckInPanel event={event} initialCode={checkInCode} onCheckedIn={onCheckedIn} />
+
+              {!event.isOwner && <SaveButton event={event} variant="full" />}
 
               <div className="grid grid-cols-2 gap-2">
                 <ShareMenu event={event} />

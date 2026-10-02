@@ -15,8 +15,16 @@ import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Field';
 import { Badge, Card, Panel } from '@/components/ui/Primitives';
 import { useToast } from '@/components/ui/Toast';
+import { EventLocationPin } from './EventLocationPin';
 import { api, ApiError } from '@/lib/api';
-import { CATEGORIES, type AiSuggestion, type Category, type EventFormPayload, type EventRecord } from '@/lib/types';
+import {
+  CATEGORIES,
+  type AiProvider,
+  type AiSuggestion,
+  type Category,
+  type EventFormPayload,
+  type EventRecord,
+} from '@/lib/types';
 import { cn, todayAsInputValue } from '@/lib/utils';
 
 interface FormState {
@@ -143,10 +151,13 @@ function AiPanel({
   form,
   onApply,
   available,
+  provider,
 }: {
   form: FormState;
   onApply: (suggestion: AiSuggestion, fields: Set<keyof AiSuggestion>) => void;
   available: boolean;
+  /** Which engine answers — Gemini, or the built-in assistant when no key is configured. */
+  provider: AiProvider;
 }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -223,8 +234,9 @@ function AiPanel({
             AI event assistant
           </h2>
           <p className="mt-1.5 max-w-md text-sm leading-relaxed text-ink-soft">
-            Jot down a rough idea and Gemini will suggest a clearer title, a structured description,
-            a category and tags. Entirely optional — you can publish without it.
+            Jot down a rough idea and {provider === 'gemini' ? 'Gemini' : 'the built-in assistant'}{' '}
+            will suggest a clearer title, a structured description, a category and tags. Entirely
+            optional — you can publish without it.
           </p>
         </div>
 
@@ -464,6 +476,7 @@ export function EventForm({
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
   const [aiAvailable, setAiAvailable] = useState(false);
+  const [aiProvider, setAiProvider] = useState<AiProvider>('local');
   /**
    * A toast disappears after five seconds. Someone who looks away, or who uses a screen
    * reader and navigates back up the form, needs the failure still on the page — so the
@@ -477,7 +490,10 @@ export function EventForm({
   useEffect(() => {
     api
       .aiStatus()
-      .then((status) => setAiAvailable(status.available))
+      .then((status) => {
+        setAiAvailable(status.available);
+        setAiProvider(status.provider ?? 'gemini');
+      })
       .catch(() => setAiAvailable(false));
   }, []);
 
@@ -641,7 +657,7 @@ export function EventForm({
         </div>
       )}
 
-      <AiPanel form={form} onApply={applyAi} available={aiAvailable} />
+      <AiPanel form={form} onApply={applyAi} available={aiAvailable} provider={aiProvider} />
 
       {/* ------------------------------------------------------ the basics */}
       <Card className="space-y-5 p-5 sm:p-6">
@@ -823,29 +839,18 @@ export function EventForm({
           />
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Input
-            id="field-latitude"
-            label="Latitude"
-            value={form.latitude}
-            onChange={(changeEvent) => set('latitude', changeEvent.target.value)}
-            error={errors.latitude}
-            hint="Optional — adding both coordinates puts your event on the map."
-            placeholder="11.0168"
-            inputMode="decimal"
-          />
-
-          <Input
-            id="field-longitude"
-            label="Longitude"
-            value={form.longitude}
-            onChange={(changeEvent) => set('longitude', changeEvent.target.value)}
-            error={errors.longitude}
-            hint="Right-click a spot in Google Maps to copy its coordinates."
-            placeholder="76.9558"
-            inputMode="decimal"
-          />
-        </div>
+        <EventLocationPin
+          address={form.address}
+          neighborhood={form.neighborhood}
+          city={form.city}
+          latitude={form.latitude}
+          longitude={form.longitude}
+          errors={{ latitude: errors.latitude, longitude: errors.longitude }}
+          onChange={(latitude, longitude) => {
+            set('latitude', latitude);
+            set('longitude', longitude);
+          }}
+        />
       </Card>
 
       {/* ------------------------------------------------------------ image */}

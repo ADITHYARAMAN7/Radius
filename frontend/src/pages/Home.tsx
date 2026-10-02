@@ -227,8 +227,8 @@ function HowItWorks() {
       icon: MapPin,
     },
     {
-      title: 'Say you are going',
-      body: 'One tap to RSVP. The organiser sees the count, you get the event in your own list, and you can cancel any time.',
+      title: 'Say you are going — then turn up',
+      body: 'One tap to RSVP, and a quick QR check-in at the venue. Both earn neighbour points, and turning up earns the most.',
       icon: Users,
     },
     {

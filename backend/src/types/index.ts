@@ -47,6 +47,9 @@ export interface EventRecord {
   creatorPhotoURL: string | null;
 
   rsvpCount: number;
+  /** How many people actually turned up — counted by the check-in flow. */
+  checkedInCount: number;
+  commentCount: number;
   status: EventStatus;
 
   createdAt: string | null;
@@ -55,6 +58,10 @@ export interface EventRecord {
   /** Populated per-request for the signed-in caller. */
   isAttending?: boolean;
   isOwner?: boolean;
+  isSaved?: boolean;
+  isCheckedIn?: boolean;
+  /** Only ever sent to the organiser — it is what attendees must present to check in. */
+  checkInCode?: string;
 }
 
 export interface UserProfile {
@@ -67,6 +74,33 @@ export interface UserProfile {
   city: string;
   createdAt: string | null;
   updatedAt: string | null;
+
+  points: number;
+  level: NeighbourLevel;
+  stats: NeighbourStats;
+  badges: Badge[];
+}
+
+export interface NeighbourStats {
+  hosted: number;
+  rsvps: number;
+  checkIns: number;
+}
+
+export interface NeighbourLevel {
+  name: string;
+  /** 1-based position on the ladder. */
+  rank: number;
+  minPoints: number;
+  nextName: string | null;
+  nextAt: number | null;
+}
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  earned: boolean;
 }
 
 export interface Attendee {
@@ -74,6 +108,20 @@ export interface Attendee {
   displayName: string;
   photoURL: string | null;
   createdAt: string | null;
+  checkedIn: boolean;
+}
+
+export interface EventComment {
+  id: string;
+  uid: string;
+  displayName: string;
+  photoURL: string | null;
+  text: string;
+  /** True when the author is the event's organiser, so answers stand out from questions. */
+  isOrganiser: boolean;
+  createdAt: string | null;
+  /** Populated per-request: the viewer wrote it, or owns the event it is on. */
+  canDelete?: boolean;
 }
 
 export type DateFilter = 'today' | 'tomorrow' | 'weekend' | 'week' | 'upcoming' | 'all' | 'past';

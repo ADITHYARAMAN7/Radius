@@ -29,7 +29,22 @@ const config = {
  * This is what makes the whole app testable without a Google Cloud project — otherwise
  * every signed-in page is unreachable locally. Never set in production.
  */
-const authEmulatorHost = import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST as string | undefined;
+const configuredEmulatorHost = import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST as string | undefined;
+
+/**
+ * Local mode, mirroring the API's: on the dev server with no Firebase web config at all,
+ * sign-in goes to the Auth emulator that `npm run dev` starts. That is what makes a fresh
+ * clone fully usable — accounts, RSVPs, posting — without creating a Firebase project.
+ * A production build never takes this path.
+ */
+const authEmulatorHost =
+  configuredEmulatorHost || (import.meta.env.DEV && !config.apiKey ? '127.0.0.1:9099' : undefined);
+
+/** Must match the project id the emulators and the API run under. */
+const LOCAL_PROJECT_ID = 'demo-nearby-events';
+
+/** True when accounts live in the local emulator rather than in real Firebase Auth. */
+export const isLocalAuth = Boolean(authEmulatorHost);
 
 /**
  * Whether sign-in can work at all. Checked up front so the UI can explain that auth is
@@ -55,7 +70,12 @@ export function getFirebaseAuth(): Auth {
     // The emulator ignores these, but the SDK still requires non-empty values.
     app = app ?? initializeApp(
       authEmulatorHost
-        ? { ...config, apiKey: config.apiKey || 'emulator', projectId: config.projectId || 'demo' }
+        ? {
+            ...config,
+            apiKey: config.apiKey || 'local-emulator',
+            authDomain: config.authDomain || 'localhost',
+            projectId: config.projectId || LOCAL_PROJECT_ID,
+          }
         : config,
     );
     authInstance = getAuth(app);
@@ -99,7 +119,11 @@ export function describeAuthError(error: unknown): string {
     case 'auth/too-many-requests':
       return 'Too many attempts. Wait a minute and try again.';
     case 'auth/network-request-failed':
-      return 'We could not reach the sign-in service. Check your connection.';
+      // In local mode "the sign-in service" is the emulator on this machine, so a network
+      // error means it is not running — which has nothing to do with the user's connection.
+      return isLocalAuth
+        ? 'The local sign-in emulator is not running yet. It starts with the server — wait a few seconds and try again, or restart the project with "npm run dev".'
+        : 'We could not reach the sign-in service. Check your connection.';
     default:
       return (error as { message?: string }).message || 'Sign-in failed. Please try again.';
   }
@@ -117,6 +141,11 @@ export async function registerWithEmail(
   if (displayName.trim()) {
     await updateProfile(credential.user, { displayName: displayName.trim() });
     await credential.user.reload();
+
+    // The ID token minted at sign-up predates the name. The API reads the organiser name
+    // from the token, so without a forced refresh a new user's first events would be
+    // attributed to the first half of their email address for up to an hour.
+    await credential.user.getIdToken(true);
   }
 
   return credential.user;
@@ -132,6 +161,27 @@ export async function signInWithGoogle(): Promise<User> {
   provider.setCustomParameters({ prompt: 'select_account' });
   const credential = await signInWithPopup(getFirebaseAuth(), provider);
   return credential.user;
+}
+
+/** A ready-made account for demos, so nobody has to invent an email to try the app. */
+const DEMO_ACCOUNT = { email: 'demo@nearby-events.local', password: 'demo-neighbour', name: 'Demo Neighbour' };
+
+/**
+ * One-click sign-in for local mode. Creates the demo account the first time and signs
+ * into it thereafter. Refuses to run against real Firebase Auth.
+ */
+export async function signInAsDemoUser(): Promise<{ user: User; created: boolean }> {
+  if (!isLocalAuth) throw new Error('The demo account only exists in local mode.');
+
+  try {
+    return { user: await signInWithEmail(DEMO_ACCOUNT.email, DEMO_ACCOUNT.password), created: false };
+  } catch (error) {
+    const code = (error as { code?: string }).code ?? '';
+    if (code !== 'auth/user-not-found' && code !== 'auth/invalid-credential') throw error;
+
+    const user = await registerWithEmail(DEMO_ACCOUNT.email, DEMO_ACCOUNT.password, DEMO_ACCOUNT.name);
+    return { user, created: true };
+  }
 }
 
 export async function signOut(): Promise<void> {

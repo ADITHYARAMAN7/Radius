@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Download, Printer, QrCode, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Primitives';
@@ -30,7 +31,9 @@ export function EventQrCode({ event }: EventQrCodeProps) {
         QR Flyer
       </Button>
 
-      {open && (
+      {/* Portalled to <body> so the overlay covers the navbar too — see CheckInPanel. */}
+      {open &&
+        createPortal(
         <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
@@ -78,14 +81,15 @@ export function EventQrCode({ event }: EventQrCodeProps) {
                 download={`${event.title}-qrcode.png`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand text-brand-on px-3 py-2 text-xs font-semibold shadow hover:bg-brand-hover transition"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand text-white px-3 py-2 text-xs font-semibold shadow hover:bg-brand-hover transition"
               >
                 <Download className="h-4 w-4" />
                 Download QR
               </a>
             </div>
           </Card>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

@@ -4,10 +4,13 @@
   "private": true,
   "description": "Nearby-objects — Discover. Connect. Participate. A location-aware community event platform on Google Cloud.",
   "scripts": {
-    "install:all": "npm install --prefix backend && npm install --prefix frontend",
-    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend",
+    "dev": "concurrently -n emu,api,web -c yellow,cyan,magenta \"npm run emulators\" \"npm run dev:api:local\" \"npm run dev:web\"",
+    "dev:cloud": "concurrently -n api,web -c cyan,magenta \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
     "dev:api": "npm run dev --prefix backend",
+    "dev:api:local": "tsx scripts/seed-events.ts --local && npm run dev --prefix backend",
     "dev:web": "npm run dev --prefix frontend",
+    "emulators": "firebase emulators:start --only firestore,auth --project demo-nearby-events --import=./.emulator-data --export-on-exit=./.emulator-data",
     "build": "npm run build --prefix backend && npm run build --prefix frontend",
     "typecheck": "npm run typecheck --prefix backend && npm run typecheck --prefix frontend",
     "seed": "tsx scripts/seed-events.ts",
@@ -15,7 +18,8 @@
     "start": "npm start --prefix backend"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "firebase-tools": "^15.32.1"
   },
   "engines": {
     "node": ">=20"

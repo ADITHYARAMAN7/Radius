@@ -37,6 +37,14 @@ It replaces the fragmentation and clutter of physical corkboards and generic soc
 - 🔎 **Natural Language Search Intent AI**: Conversational natural-language query parsing (`POST /api/ai/search`) powered by Gemini.
 - 👤 **User Profiles & Dashboards**: Dedicated pages for created events (`/my-events`), attending events (`/my-rsvps`), and profile management (`/profile`).
 - 📊 **Platform Insights & Analytics**: Visual analytics dashboard (`/insights`) powered by Recharts displaying event metrics, category distributions, and community engagement.
+- ✅ **QR Check-in (said yes vs. showed up)**: Every event has a check-in code and QR. Guests scan it or type the code at the venue (`POST /api/events/:id/checkin`); organisers see real turnout, and Insights reports the board-wide show-up rate.
+- 🏅 **Neighbour Points, Levels & Badges**: Hosting (+20), RSVPing (+5) and checking in (+15) earn points, awarded in the same Firestore transaction as the action. Five levels, seven badges and a public leaderboard (`/community`).
+- 💬 **Questions & Answers**: A public thread under each event, with organiser replies marked.
+- 🔖 **Save for Later**: Bookmark an event without RSVPing; saved events live under a Saved tab in `/my-rsvps`.
+- 🌦️ **Event-day Weather**: Forecast for the hour the event starts, at the venue (Open-Meteo, no API key).
+- 📌 **Automatic Map Pins**: Organisers never type coordinates. The form finds the pin from the address or the device location and lets them drag it; if skipped, the server geocodes the address on publish (OpenStreetMap Nominatim, no API key).
+- 🎙️ **Voice Search**: Speak a query on the Explore page and smart search turns it into filters.
+- 🧩 **Runs With Nothing Configured**: With no `.env`, the app uses the Firebase emulators, stores photos on disk, falls back to OpenStreetMap for the map and to a built-in rule-based assistant for AI — see Quick Start.
 - 🛡️ **Enterprise Security & Rate Limiting**: Helmet Content Security Policy (CSP), per-IP write limiters, per-user AI throttles, Zod schema validation, and Firebase Auth JWT token verification.
 
 ---
@@ -111,10 +119,31 @@ Nearby-Events/
 
 ## 🛠️ Quick Start & Local Development
 
+### Fastest path: local mode (no Google Cloud project needed)
+
+```bash
+npm run install:all
+npm run dev
+```
+
+With no `.env` files the app runs in **local mode**: `npm run dev` starts the Firebase emulators (Firestore + Auth), loads the demo events, and runs the API (port 8080) and the web app (port 5173). Open `http://localhost:5173` and use **Continue with the demo account** on the sign-in page.
+
+| In production | In local mode |
+|---|---|
+| Cloud Firestore | Firestore emulator (data kept in `.emulator-data/`) |
+| Firebase Authentication | Auth emulator |
+| Cloud Storage | Photos saved to `backend/uploads/` |
+| Gemini | Built-in rule-based assistant |
+| Google Maps | OpenStreetMap |
+
+The API starts the emulators itself if they are not running, so `npm run dev:api` plus `npm run dev:web` in two terminals works too. The demo board always has one event in progress; its check-in code is `NEARBY`.
+
+To use a real Google Cloud project instead, follow steps 2–4 below and run `npm run dev:cloud` (API + web, no emulators). Setting `GCP_PROJECT_ID` or `GOOGLE_APPLICATION_CREDENTIALS` switches local mode off.
+
 ### Prerequisites
 - **Node.js**: v20 or later (`>=20.0.0`)
 - **npm**: v9 or later
-- **Firebase CLI** (optional, for local Firestore emulator support)
+- **Java**: 21 or later, for local mode (the Firebase emulators run on the JVM)
 
 ---
 
@@ -220,7 +249,15 @@ Open `http://localhost:5173` in your browser to experience **Nearby-Events**!
 | `/api/events/:id/rsvp` | `POST` | Required | RSVP "I'm Going" to an event (Idempotent). |
 | `/api/events/:id/rsvp` | `DELETE` | Required | Cancel RSVP to an event (Idempotent). |
 | `/api/events/:id/attendees` | `GET` | Public | List attendees for a given event. |
-| `/api/ai/status` | `GET` | Public | Check Gemini AI service readiness. |
+| `/api/events/:id/checkin` | `POST` | Required | Check in at an event with the organiser's code. |
+| `/api/events/:id/comments` | `GET` | Optional | List the event's question-and-answer thread. |
+| `/api/events/:id/comments` | `POST` | Required | Post a question or an organiser reply. |
+| `/api/events/:id/comments/:commentId` | `DELETE` | Required | Remove a comment (author or event organiser). |
+| `/api/events/:id/save` | `POST` / `DELETE` | Required | Save or un-save an event for later. |
+| `/api/events/:id/weather` | `GET` | Public | Forecast for the hour the event starts. |
+| `/api/community/leaderboard` | `GET` | Public | Most active neighbours and the points rules. |
+| `/api/geocode` | `POST` | Required | Look up map coordinates for a written address. |
+| `/api/ai/status` | `GET` | Public | Check assistant readiness and which engine answers (Gemini or built-in). |
 | `/api/ai/assist` | `POST` | Required | Auto-generate title, description, and tags via Gemini 1.5. |
 | `/api/ai/search` | `POST` | Required | Natural-language query parsing into structured filters. |
 | `/api/uploads/image` | `POST` | Required | Upload event cover photo to Google Cloud Storage. |
@@ -229,6 +266,7 @@ Open `http://localhost:5173` in your browser to experience **Nearby-Events**!
 | `/api/me` | `PATCH` | Required | Update user display name, bio, or contact info. |
 | `/api/me/events` | `GET` | Required | List all events created by the logged-in user. |
 | `/api/me/rsvps` | `GET` | Required | List all events the logged-in user is attending. |
+| `/api/me/saved` | `GET` | Required | List the events the logged-in user has saved. |
 
 ---
 

@@ -6,11 +6,13 @@ import express from 'express';
 import helmet from 'helmet';
 import { capabilities, env } from './config/env';
 import { initFirebase } from './config/firebase';
+import { ensureLocalStack, localStackGuard } from './config/localStack';
 import { logger } from './config/logger';
 import { errorHandler, notFoundHandler } from './middleware/error';
 import { readLimiter, writeLimiter } from './middleware/rateLimit';
 import { requestContext } from './middleware/requestContext';
 import { aiRouter } from './routes/ai';
+import { engagementRouter } from './routes/engagement';
 import { eventsRouter } from './routes/events';
 import { metaRouter } from './routes/meta';
 import { recommendationsRouter } from './routes/recommendations';
@@ -47,7 +49,13 @@ export function createApp(): express.Express {
     'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
     'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
     'img-src': ["'self'", 'data:', 'blob:', 'https:'],
-    'connect-src': ["'self'", 'https://*.googleapis.com', 'https://*.google.com'],
+    'connect-src': [
+      "'self'",
+      'https://*.googleapis.com',
+      'https://*.google.com',
+      // Local mode only: the browser talks to the Auth emulator directly.
+      ...(env.localMode ? ['http://127.0.0.1:9099', 'http://localhost:9099'] : []),
+    ],
     'frame-src': ["'self'", 'https://*.firebaseapp.com', 'https://*.google.com'],
   };
 
@@ -116,6 +124,10 @@ export function createApp(): express.Express {
     return writeLimiter(req, res, next);
   });
 
+  // Local mode only: answer straight away when the emulators are not up, instead of
+  // letting the request hang on a database that is not there.
+  app.use('/api', localStackGuard);
+
   app.use('/api', metaRouter);
   // Recommendations must be mounted BEFORE the generic events router so that
   // GET /api/events/recommended is matched here rather than treated as /:id.
@@ -124,6 +136,7 @@ export function createApp(): express.Express {
   app.use('/api/events', trendingRouter);
   app.use('/api/events', eventsRouter);
   app.use('/api/events', rsvpsRouter);
+  app.use('/api/events', engagementRouter);
   app.use('/api/me', usersRouter);
   // The AI router accepts up to ~2 KB of user text in a prompt. Give it its own
   // JSON limit so we do not raise the bar for every other route.
@@ -205,10 +218,14 @@ function start(): void {
     logger.info('Nearby-objects API listening', {
       port: env.port,
       environment: env.nodeEnv,
+      mode: env.localMode ? 'local emulators (no Google Cloud credentials needed)' : 'google cloud',
       storage: capabilities.storage,
       ai: capabilities.ai ? env.aiProvider : false,
       serveStatic: env.serveStatic,
     });
+
+    // Local mode needs the Firebase emulators; start them if nothing else has.
+    void ensureLocalStack();
   });
 
   // Cloud Run sends SIGTERM before reclaiming an instance; closing cleanly avoids

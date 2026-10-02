@@ -13,7 +13,7 @@ import {
   reactivateEvent,
   updateEvent,
 } from '../services/eventService';
-import { ensureProfile } from '../services/userService';
+import { resolveActor } from '../services/userService';
 import type { EventQueryOptions } from '../types';
 
 export const eventsRouter = Router();
@@ -71,9 +71,9 @@ eventsRouter.post(
     const input = eventInputSchema.parse(req.body);
 
     // First event doubles as first write of the profile document.
-    await ensureProfile(user);
+    const actor = await resolveActor(user);
 
-    const event = await createEvent(input, user);
+    const event = await createEvent(input, actor);
     res.status(201).json({ event });
   }),
 );

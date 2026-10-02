@@ -9,6 +9,8 @@ export interface InsightsPayload {
     expired: number;
     cancelled: number;
     rsvps: number;
+    /** People who checked in at the door, across every event. */
+    checkIns: number;
     organisers: number;
   };
   topCategory: { name: string; count: number } | null;
@@ -45,6 +47,7 @@ export async function getInsights(): Promise<InsightsPayload> {
     'neighborhood',
     'status',
     'rsvpCount',
+    'checkedInCount',
     'startsAt',
     'creatorId',
   ).get();
@@ -62,6 +65,7 @@ export async function getInsights(): Promise<InsightsPayload> {
   let expired = 0;
   let cancelled = 0;
   let rsvps = 0;
+  let checkIns = 0;
 
   const bump = (map: Map<string, number>, key: string, by = 1) => {
     if (!key) return;
@@ -80,6 +84,7 @@ export async function getInsights(): Promise<InsightsPayload> {
     const startsAtIso = toIso(data.startsAt);
 
     rsvps += count;
+    checkIns += typeof data.checkedInCount === 'number' ? Math.max(0, data.checkedInCount) : 0;
     if (data.creatorId) organisers.add(String(data.creatorId));
 
     if (status === 'CANCELLED') cancelled += 1;
@@ -135,6 +140,7 @@ export async function getInsights(): Promise<InsightsPayload> {
       expired,
       cancelled,
       rsvps,
+      checkIns,
       organisers: organisers.size,
     },
     topCategory: topEntry(categoryEvents),
@@ -162,4 +168,36 @@ export async function getCategoryCounts(): Promise<Array<{ category: Category; c
   }
 
   return CATEGORIES.map((category) => ({ category, count: counts.get(category) ?? 0 }));
+}
+
+let placeCache: { value: { neighborhoods: string[]; cities: string[] }; expiresAt: number } | null = null;
+
+/**
+ * Every neighbourhood and city that currently has an active event. Smart search matches a
+ * query against this list, so it can only ever pick a place that is really on the board.
+ * Cached briefly — the set changes slowly and search is called per keystroke-ish.
+ */
+export async function getPlaceIndex(): Promise<{ neighborhoods: string[]; cities: string[] }> {
+  if (placeCache && placeCache.expiresAt > Date.now()) return placeCache.value;
+
+  const snapshot = await getDb()
+    .collection('events')
+    .where('status', '==', 'ACTIVE')
+    .select('neighborhood', 'city')
+    .get();
+
+  const neighborhoods = new Set<string>();
+  const cities = new Set<string>();
+
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    const neighborhood = String(data.neighborhood ?? '').trim();
+    const city = String(data.city ?? '').trim();
+    if (neighborhood) neighborhoods.add(neighborhood);
+    if (city) cities.add(city);
+  }
+
+  const value = { neighborhoods: Array.from(neighborhoods), cities: Array.from(cities) };
+  placeCache = { value, expiresAt: Date.now() + 60_000 };
+  return value;
 }

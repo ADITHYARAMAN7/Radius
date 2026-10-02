@@ -61,6 +61,8 @@ function makeEvent(overrides: Partial<EventRecord> & { category: Category }): Ev
         creatorName: 'Test Organiser',
         creatorPhotoURL: null,
         rsvpCount: 10,
+        checkedInCount: 0,
+        commentCount: 0,
         status: 'ACTIVE',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { currentUser, requireAuth, type AuthedRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/error';
 import { joinEvent, leaveEvent } from '../services/rsvpService';
-import { ensureProfile } from '../services/userService';
+import { resolveActor } from '../services/userService';
 
 export const rsvpsRouter = Router();
 
@@ -14,10 +14,9 @@ rsvpsRouter.post(
   '/:id/rsvp',
   requireAuth,
   asyncHandler(async (req: AuthedRequest, res) => {
-    const user = currentUser(req);
-    await ensureProfile(user);
+    const actor = await resolveActor(currentUser(req));
 
-    const result = await joinEvent(String(req.params.id), user);
+    const result = await joinEvent(String(req.params.id), actor);
     res.json(result);
   }),
 );

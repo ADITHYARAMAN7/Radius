@@ -13,11 +13,16 @@ import type { AuthUser } from '../middleware/auth';
 import type { Category, EventQueryOptions, EventRecord, Paginated } from '../types';
 import { combineDateTime, distanceKm, resolveDateWindow, toIso } from '../utils/dates';
 import { buildKeywords, normalise, relevanceScore } from '../utils/search';
+import { generateCheckInCode } from './checkinService';
+import { pointsDelta } from './gamificationService';
+import { geocode } from './geocodeService';
 import { deleteImage, isOwnedImagePath } from './storageService';
 
 const EVENTS = 'events';
 const RSVPS = 'rsvps';
 const ATTENDING = 'attending';
+const SAVED = 'saved';
+const COMMENTS = 'comments';
 
 /**
  * Upper bound on documents pulled into memory for one Explore request.
@@ -70,6 +75,8 @@ export function toEventRecord(doc: QueryDocumentSnapshot | DocumentData, id?: st
     creatorPhotoURL: data.creatorPhotoURL ? String(data.creatorPhotoURL) : null,
 
     rsvpCount: typeof data.rsvpCount === 'number' ? data.rsvpCount : 0,
+    checkedInCount: typeof data.checkedInCount === 'number' ? Math.max(0, data.checkedInCount) : 0,
+    commentCount: typeof data.commentCount === 'number' ? Math.max(0, data.commentCount) : 0,
     status: (data.status ?? 'ACTIVE') as EventRecord['status'],
 
     createdAt: toIso(data.createdAt),
@@ -124,6 +131,25 @@ function safeImagePath(imagePath: string | null | undefined, uid: string): strin
   return imagePath;
 }
 
+/**
+ * Coordinates for an event: the organiser's own pin when they set one, otherwise looked
+ * up from the address.
+ *
+ * Almost nobody types a latitude and longitude into a form, and an event with no pin is
+ * invisible to "near me", the distance filter and the map — the features the board is
+ * named after. Filling it in here means a plain written address is enough.
+ */
+async function resolvePin(
+  latitude: number | null | undefined,
+  longitude: number | null | undefined,
+  place: { address: string; neighborhood: string; city: string },
+): Promise<{ latitude: number | null; longitude: number | null }> {
+  if (typeof latitude === 'number' && typeof longitude === 'number') return { latitude, longitude };
+
+  const found = await geocode(place);
+  return { latitude: found?.latitude ?? null, longitude: found?.longitude ?? null };
+}
+
 function assertNotInPast(startsAt: Date): void {
   // A short grace window lets someone post an event that is about to begin.
   const graceMs = 5 * 60 * 1000;
@@ -142,6 +168,8 @@ export async function createEvent(input: EventInput, user: AuthUser): Promise<Ev
 
   const tags = (input.tags ?? []).map((t) => t.trim()).filter(Boolean).slice(0, 10);
   const summary = input.summary?.trim() || input.description.slice(0, 160).trim();
+
+  const pin = await resolvePin(input.latitude, input.longitude, input);
 
   const searchable: SearchableFields = {
     title: input.title,
@@ -164,8 +192,8 @@ export async function createEvent(input: EventInput, user: AuthUser): Promise<Ev
     startsAt: Timestamp.fromDate(startsAt),
     endsAt: Timestamp.fromDate(endsAt),
 
-    latitude: input.latitude ?? null,
-    longitude: input.longitude ?? null,
+    latitude: pin.latitude,
+    longitude: pin.longitude,
 
     imageUrl: input.imageUrl ?? null,
     imagePath: safeImagePath(input.imagePath, user.uid),
@@ -175,6 +203,9 @@ export async function createEvent(input: EventInput, user: AuthUser): Promise<Ev
     creatorPhotoURL: user.photoURL,
 
     rsvpCount: 0,
+    checkedInCount: 0,
+    commentCount: 0,
+    checkInCode: generateCheckInCode(),
     status: 'ACTIVE' as const,
 
     ...buildSearchFields(searchable),
@@ -183,11 +214,26 @@ export async function createEvent(input: EventInput, user: AuthUser): Promise<Ev
     updatedAt: FieldValue.serverTimestamp(),
   };
 
-  const ref = await getDb().collection(EVENTS).add(payload);
+  const db = getDb();
+  const ref = db.collection(EVENTS).doc();
+
+  // One batch, so hosting points exist exactly when the event does.
+  const batch = db.batch();
+  batch.set(ref, payload);
+  batch.set(db.collection('users').doc(user.uid), pointsDelta('host', 1), { merge: true });
+  await batch.commit();
+
   const snapshot = await ref.get();
 
   logger.info('Event created', { eventId: ref.id, creatorId: user.uid, category: input.category });
-  return { ...toEventRecord(snapshot), isOwner: true, isAttending: false };
+  return {
+    ...toEventRecord(snapshot),
+    isOwner: true,
+    isAttending: false,
+    isSaved: false,
+    isCheckedIn: false,
+    checkInCode: payload.checkInCode,
+  };
 }
 
 export async function isAttending(eventId: string, uid: string): Promise<boolean> {
@@ -201,7 +247,36 @@ export async function getEventById(id: string, viewerUid?: string): Promise<Even
 
   const record = toEventRecord(snapshot);
   record.isOwner = Boolean(viewerUid && viewerUid === record.creatorId);
-  record.isAttending = viewerUid ? await isAttending(id, viewerUid) : false;
+  record.isAttending = false;
+  record.isSaved = false;
+  record.isCheckedIn = false;
+
+  if (viewerUid) {
+    const db = getDb();
+    const [rsvp, saved] = await db.getAll(
+      db.collection(EVENTS).doc(id).collection(RSVPS).doc(viewerUid),
+      db.collection('users').doc(viewerUid).collection(SAVED).doc(id),
+    );
+
+    record.isAttending = Boolean(rsvp?.exists);
+    record.isCheckedIn = Boolean(rsvp?.exists && rsvp.data()?.checkedInAt);
+    record.isSaved = Boolean(saved?.exists);
+  }
+
+  if (record.isOwner) {
+    const data = snapshot.data() as DocumentData;
+    let code = data.checkInCode ? String(data.checkInCode) : '';
+
+    // Events posted before check-in existed get their code the first time the organiser
+    // opens them.
+    if (!code) {
+      code = generateCheckInCode();
+      await snapshot.ref.update({ checkInCode: code });
+    }
+
+    record.checkInCode = code;
+  }
+
   return record;
 }
 
@@ -260,8 +335,15 @@ export async function updateEvent(
     updatedAt: FieldValue.serverTimestamp(),
   };
 
-  if (input.latitude !== undefined) update.latitude = input.latitude;
-  if (input.longitude !== undefined) update.longitude = input.longitude;
+  // Same rule as on create: keep an explicit pin, otherwise derive one from the address —
+  // which also repairs events that were posted before pins were filled in automatically.
+  const pin = await resolvePin(
+    input.latitude !== undefined ? input.latitude : asNumber(data.latitude),
+    input.longitude !== undefined ? input.longitude : asNumber(data.longitude),
+    merged,
+  );
+  update.latitude = pin.latitude;
+  update.longitude = pin.longitude;
 
   if (input.imageUrl !== undefined) {
     const nextPath = safeImagePath(input.imagePath, user.uid);
@@ -334,11 +416,15 @@ export async function deleteEvent(id: string, user: AuthUser): Promise<void> {
   const { ref, data } = await loadOwnedEvent(id, user);
   const db = getDb();
 
-  const rsvps = await ref.collection(RSVPS).get();
+  const [rsvps, comments] = await Promise.all([
+    ref.collection(RSVPS).get(),
+    ref.collection(COMMENTS).get(),
+  ]);
 
   const targets = [
     ...rsvps.docs.map((doc) => doc.ref),
     ...rsvps.docs.map((doc) => db.collection('users').doc(doc.id).collection(ATTENDING).doc(id)),
+    ...comments.docs.map((doc) => doc.ref),
   ];
 
   // Firestore batches cap at 500 writes, so chunk — a popular event has many RSVPs.
@@ -348,7 +434,11 @@ export async function deleteEvent(id: string, user: AuthUser): Promise<void> {
     await batch.commit();
   }
 
-  await ref.delete();
+  // Hosting points go with the event, otherwise posting and deleting would farm them.
+  const final = db.batch();
+  final.delete(ref);
+  final.set(db.collection('users').doc(user.uid), pointsDelta('host', -1), { merge: true });
+  await final.commit();
 
   // Only ever delete an object the owner actually owns — a stored path from before the
   // ownership guard could still point somewhere else.
@@ -358,26 +448,38 @@ export async function deleteEvent(id: string, user: AuthUser): Promise<void> {
   logger.info('Event deleted', { eventId: id, creatorId: user.uid, rsvpsRemoved: rsvps.size });
 }
 
-/** Adds isOwner / isAttending to a page of events without one read per event. */
-async function decorateForViewer(events: EventRecord[], viewerUid?: string): Promise<void> {
+/** Adds isOwner / isAttending / isSaved to a page of events without one read per event. */
+export async function decorateForViewer(events: EventRecord[], viewerUid?: string): Promise<void> {
   if (!viewerUid || events.length === 0) {
     for (const event of events) {
       event.isOwner = false;
       event.isAttending = false;
+      event.isSaved = false;
     }
     return;
   }
 
   const db = getDb();
-  const refs = events.map((event) =>
-    db.collection('users').doc(viewerUid).collection(ATTENDING).doc(event.id),
+  const userRef = db.collection('users').doc(viewerUid);
+
+  // Both lookups in a single batched read: the attending mirrors first, then the bookmarks.
+  const snapshots = await db.getAll(
+    ...events.map((event) => userRef.collection(ATTENDING).doc(event.id)),
+    ...events.map((event) => userRef.collection(SAVED).doc(event.id)),
   );
-  const snapshots = await db.getAll(...refs);
-  const attending = new Set(snapshots.filter((s) => s.exists).map((s) => s.id));
+
+  const attending = new Set<string>();
+  const saved = new Set<string>();
+
+  snapshots.forEach((snapshot, index) => {
+    if (!snapshot.exists) return;
+    (index < events.length ? attending : saved).add(snapshot.id);
+  });
 
   for (const event of events) {
     event.isOwner = event.creatorId === viewerUid;
     event.isAttending = attending.has(event.id);
+    event.isSaved = saved.has(event.id);
   }
 }
 
@@ -583,8 +685,64 @@ export async function listAttendees(eventId: string, limit = 24) {
       displayName: String(data.displayName ?? 'Neighbour'),
       photoURL: data.photoURL ? String(data.photoURL) : null,
       createdAt: toIso(data.createdAt),
+      checkedIn: Boolean(data.checkedInAt),
     };
   });
+}
+
+/* ------------------------------------------------------------------ saved */
+
+/** Bookmarking is idempotent in both directions, like the RSVP. */
+export async function saveEvent(eventId: string, uid: string): Promise<{ saved: boolean }> {
+  const db = getDb();
+  const snapshot = await db.collection(EVENTS).doc(eventId).get();
+  if (!snapshot.exists) throw AppError.notFound('That event does not exist or has been removed.');
+
+  await db
+    .collection('users')
+    .doc(uid)
+    .collection(SAVED)
+    .doc(eventId)
+    .set({ eventId, createdAt: FieldValue.serverTimestamp() });
+
+  return { saved: true };
+}
+
+export async function unsaveEvent(eventId: string, uid: string): Promise<{ saved: boolean }> {
+  await getDb().collection('users').doc(uid).collection(SAVED).doc(eventId).delete();
+  return { saved: false };
+}
+
+export async function listSavedEvents(uid: string): Promise<EventRecord[]> {
+  const db = getDb();
+  const saved = await db
+    .collection('users')
+    .doc(uid)
+    .collection(SAVED)
+    .orderBy('createdAt', 'desc')
+    .limit(100)
+    .get();
+
+  if (saved.empty) return [];
+
+  const snapshots = await db.getAll(...saved.docs.map((doc) => db.collection(EVENTS).doc(doc.id)));
+  const records: EventRecord[] = [];
+  const stale: string[] = [];
+
+  for (const snapshot of snapshots) {
+    if (snapshot.exists) records.push(toEventRecord(snapshot));
+    else stale.push(snapshot.id);
+  }
+
+  // A bookmark for an event that has since been deleted is quietly dropped.
+  if (stale.length > 0) {
+    const batch = db.batch();
+    for (const id of stale) batch.delete(db.collection('users').doc(uid).collection(SAVED).doc(id));
+    void batch.commit().catch(() => undefined);
+  }
+
+  await decorateForViewer(records, uid);
+  return records;
 }
 
 /**

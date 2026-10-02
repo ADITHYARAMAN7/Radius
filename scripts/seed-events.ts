@@ -18,16 +18,73 @@
  *   - location, neighborhood, latitude, longitude,
  *   - image (and imageUrl), tags, RSVP count (rsvpCount).
  *
+ * On top of the events it seeds the things that make the board feel lived-in: a cast of
+ * neighbours with points and badges, attendee lists, check-ins on past events, and a few
+ * question-and-answer threads. One event is always "happening now" so the check-in flow
+ * can be demonstrated at any time — its code is NEARBY.
+ *
  * Usage:
- *   npx tsx scripts/seed-events.ts           # Add / refresh demo events
- *   npx tsx scripts/seed-events.ts --clear   # Clear seeded events first
+ *   npx tsx scripts/seed-events.ts              # Add / refresh demo events
+ *   npx tsx scripts/seed-events.ts --clear      # Clear seeded events first
+ *   npx tsx scripts/seed-events.ts --if-empty   # Seed only when the board has no events
+ *   npx tsx scripts/seed-events.ts --local      # What `npm run dev` runs: emulator only,
+ *                                               # and never fails the command after it
  */
 
+import net from 'node:net';
+import { env } from '../backend/src/config/env';
 import { FieldValue, Timestamp, getDb, initFirebase } from '../backend/src/config/firebase';
 
 initFirebase();
 const db = getDb();
 const SEED_TAG = 'seed:nearby-objects-demo';
+
+/** Check-in code of the always-live demo event. */
+const LIVE_EVENT_CODE = 'NEARBY';
+
+/**
+ * `npm run dev` starts the emulators and this script at the same moment, and the Firestore
+ * emulator takes a few seconds to boot its JVM. Waiting for the port beats failing with a
+ * connection error the first time someone runs the project.
+ */
+async function waitForEmulator(timeoutMs = 90_000): Promise<void> {
+  const target = env.firestoreEmulatorHost;
+  if (!target) return;
+
+  const [host, portRaw] = target.split(':');
+  const port = Number(portRaw);
+  const deadline = Date.now() + timeoutMs;
+  let announced = false;
+
+  while (Date.now() < deadline) {
+    const open = await new Promise<boolean>((resolve) => {
+      const socket = net.connect({ host: host || '127.0.0.1', port });
+      socket.setTimeout(1500);
+      socket.once('connect', () => {
+        socket.destroy();
+        resolve(true);
+      });
+      const fail = () => {
+        socket.destroy();
+        resolve(false);
+      };
+      socket.once('error', fail);
+      socket.once('timeout', fail);
+    });
+
+    if (open) return;
+
+    if (!announced) {
+      console.log(`[Seed] Waiting for the Firestore emulator on ${target}...`);
+      announced = true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  throw new Error(
+    `The Firestore emulator did not come up on ${target}. Start it with "npm run emulators".`,
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -81,6 +138,42 @@ const ORGANISERS = {
   fatima: { id: 'seed-user-fatima', name: 'Fatima Noor', bio: 'Literature club curator and circular economy organizer.' },
 };
 
+/** People who turn up to things — they fill the attendee lists and the leaderboard. */
+const NEIGHBOURS = [
+  { id: 'seed-user-anitha', name: 'Anitha Raman', neighborhood: 'R S Puram' },
+  { id: 'seed-user-vignesh', name: 'Vignesh Kumar', neighborhood: 'Gandhipuram' },
+  { id: 'seed-user-lakshmi', name: 'Lakshmi Narayanan', neighborhood: 'Saibaba Colony' },
+  { id: 'seed-user-imran', name: 'Imran Sheriff', neighborhood: 'Peelamedu' },
+  { id: 'seed-user-divya', name: 'Divya Subramaniam', neighborhood: 'Race Course' },
+  { id: 'seed-user-sanjay', name: 'Sanjay Venkat', neighborhood: 'Saravanampatti' },
+  { id: 'seed-user-kavya', name: 'Kavya Mohan', neighborhood: 'R S Puram' },
+  { id: 'seed-user-joseph', name: 'Joseph Anand', neighborhood: 'Singanallur' },
+  { id: 'seed-user-revathi', name: 'Revathi Iyer', neighborhood: 'Peelamedu' },
+  { id: 'seed-user-naveen', name: 'Naveen Prakash', neighborhood: 'Gandhipuram' },
+  { id: 'seed-user-shreya', name: 'Shreya Nair', neighborhood: 'Race Course' },
+  { id: 'seed-user-ganesh', name: 'Ganesh Murthy', neighborhood: 'Vadavalli' },
+];
+
+/** Question-and-answer threads, matched to events by a word in the title. */
+const COMMENT_THREADS: Array<{ match: string; thread: Array<{ from: 'guest' | 'host'; text: string }> }> = [
+  {
+    match: 'Football',
+    thread: [
+      { from: 'guest', text: 'Is there parking near the ground, or is it better to come by bus?' },
+      { from: 'host', text: 'There is free two-wheeler parking by the pavilion gate. Cars are easier on the Nanjappa Road side.' },
+      { from: 'guest', text: 'First time joining — do I need to bring my own bib?' },
+      { from: 'host', text: 'No need, we bring bibs for both teams. Just bring water.' },
+    ],
+  },
+  {
+    match: 'Live now',
+    thread: [
+      { from: 'guest', text: 'Just arrived — where exactly is the group sitting?' },
+      { from: 'host', text: 'Under the big rain tree near the east gate. Look for the green banner, and ask me for the check-in code.' },
+    ],
+  },
+];
+
 // ---------------------------------------------------------------------------
 // Seed Event Definitions
 // ---------------------------------------------------------------------------
@@ -113,10 +206,37 @@ interface SeedEventDefinition {
   organiser: (typeof ORGANISERS)[keyof typeof ORGANISERS];
   image: string;
   isExpired?: boolean;
+  /** Ignores daysFromNow and the times: the event always started 45 minutes ago. */
+  liveNow?: boolean;
 }
 
 // 25 realistic upcoming events across all 7 categories + 7 expired events
 const UPCOMING_EVENTS: SeedEventDefinition[] = [
+  // -------------------------------------------------------------------------
+  // 0. HAPPENING NOW — keeps the "live" badge and the check-in flow demonstrable
+  // -------------------------------------------------------------------------
+  {
+    title: 'Live now: Race Course Neighbours Meet & Walk',
+    description:
+      'An easy-paced loop of the Race Course walking track with whoever turns up, followed by tea at the stall near the east gate. No fixed agenda — it is simply a standing excuse for people who live nearby to meet each other.\n\nJoin for one lap or for the whole thing. Children and dogs on leads are welcome.\n\nThis listing is always in progress on the demo board, so you can try checking in: ask the organiser for the code, or scan the check-in QR from the organiser view.',
+    summary: 'A relaxed walk and tea for people who live around Race Course. Join any time.',
+    category: 'Community',
+    tags: ['walk', 'meetup', 'outdoor', 'family friendly', 'live'],
+    daysFromNow: 0,
+    startTime: '00:00',
+    endTime: '00:00',
+    timeFormatted: '',
+    location: 'Race Course Walking Track, East Gate',
+    address: 'Race Course Road, Race Course, Coimbatore 641018',
+    neighborhood: 'Race Course',
+    city: 'Coimbatore',
+    latitude: 11.0006,
+    longitude: 76.9783,
+    rsvpCount: 18,
+    organiser: ORGANISERS.david,
+    image: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=1200&q=80',
+    liveNow: true,
+  },
   // -------------------------------------------------------------------------
   // 1. SPORTS (4 upcoming events)
   // -------------------------------------------------------------------------
@@ -939,41 +1059,235 @@ async function clearPreviouslySeeded(): Promise<number> {
   return docs.length;
 }
 
-async function seedOrganiserProfiles(): Promise<void> {
-  console.log('[Seed] Ensuring demo organiser user profiles exist...');
+function hhmm(date: Date): string {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function ymd(date: Date): string {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+/** Resolves when an event happens. The live event is pinned around the current moment. */
+function scheduleFor(item: SeedEventDefinition): { date: string; startsAt: Date; endsAt: Date; startTime: string; endTime: string } {
+  if (!item.liveNow) {
+    const date = dateStringWithOffset(item.daysFromNow);
+    return {
+      date,
+      startsAt: combineDateTime(date, item.startTime),
+      endsAt: combineDateTime(date, item.endTime),
+      startTime: item.startTime,
+      endTime: item.endTime,
+    };
+  }
+
+  const now = new Date();
+  let startsAt = new Date(now.getTime() - 45 * 60_000);
+  let endsAt = new Date(now.getTime() + 2 * 3_600_000);
+
+  // The form model is one calendar day with start < end, so keep the event inside today.
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dayEnd = new Date(dayStart.getTime() + 86_400_000 - 60_000);
+  if (startsAt < dayStart) startsAt = dayStart;
+  if (endsAt > dayEnd) endsAt = dayEnd;
+
+  return { date: ymd(now), startsAt, endsAt, startTime: hhmm(startsAt), endTime: hhmm(endsAt) };
+}
+
+function formatClock(time: string): string {
+  const [h, m] = time.split(':').map(Number);
+  const suffix = (h ?? 0) >= 12 ? 'PM' : 'AM';
+  const hour = (h ?? 0) % 12 === 0 ? 12 : (h ?? 0) % 12;
+  return `${hour}:${String(m ?? 0).padStart(2, '0')} ${suffix}`;
+}
+
+interface SeededEvent {
+  ref: FirebaseFirestore.DocumentReference;
+  item: SeedEventDefinition;
+  isNew: boolean;
+  expired: boolean;
+  startsAt: Date;
+}
+
+/**
+ * Attendee lists, check-ins and comment threads for events that were just created.
+ *
+ * Only new events get them: re-running the seed must not duplicate comments or undo an
+ * RSVP somebody made by hand while trying the app.
+ */
+async function seedEngagement(events: SeededEvent[]): Promise<Map<string, { rsvps: number; checkIns: number; categories: Map<string, number> }>> {
+  const activity = new Map<string, { rsvps: number; checkIns: number; categories: Map<string, number> }>();
+  const noteRsvp = (uid: string, category: string, checkedIn: boolean) => {
+    const entry = activity.get(uid) ?? { rsvps: 0, checkIns: 0, categories: new Map<string, number>() };
+    entry.rsvps += 1;
+    if (checkedIn) entry.checkIns += 1;
+    entry.categories.set(category, (entry.categories.get(category) ?? 0) + 1);
+    activity.set(uid, entry);
+  };
+
+  let cursor = 0;
+
+  for (const seeded of events) {
+    if (!seeded.isNew) continue;
+
+    const { ref, item, expired } = seeded;
+    const batch = db.batch();
+
+    // A visible handful of named attendees; the rest of the count stays anonymous.
+    const visible = Math.min(8, item.rsvpCount, NEIGHBOURS.length);
+    // Past events show a believable turnout, the live one has a few people already in.
+    const checkedInShare = expired ? 0.75 : item.liveNow ? 0.4 : 0;
+    let checkedInVisible = 0;
+
+    for (let i = 0; i < visible; i += 1) {
+      const neighbour = NEIGHBOURS[(cursor + i) % NEIGHBOURS.length]!;
+      const checkedIn = i < Math.round(visible * checkedInShare);
+      if (checkedIn) checkedInVisible += 1;
+
+      const joinedAt = Timestamp.fromDate(new Date(Date.now() - (i + 1) * 3_600_000 * 5));
+
+      batch.set(ref.collection('rsvps').doc(neighbour.id), {
+        uid: neighbour.id,
+        displayName: neighbour.name,
+        photoURL: null,
+        createdAt: joinedAt,
+        ...(checkedIn ? { checkedInAt: Timestamp.fromDate(seeded.startsAt) } : {}),
+      });
+
+      batch.set(db.collection('users').doc(neighbour.id).collection('attending').doc(ref.id), {
+        eventId: ref.id,
+        title: item.title,
+        category: item.category,
+        startsAt: Timestamp.fromDate(seeded.startsAt),
+        imageUrl: item.image,
+        createdAt: joinedAt,
+      });
+
+      noteRsvp(neighbour.id, item.category, checkedIn);
+    }
+
+    cursor += 3;
+
+    // The headline turnout scales with the full RSVP count, not just the visible names.
+    const checkedInCount = expired
+      ? Math.max(checkedInVisible, Math.round(item.rsvpCount * 0.78))
+      : checkedInVisible;
+
+    const thread = COMMENT_THREADS.find((entry) => item.title.includes(entry.match))?.thread ?? [];
+    thread.forEach((comment, index) => {
+      const guest = NEIGHBOURS[(cursor + index) % NEIGHBOURS.length]!;
+      const author =
+        comment.from === 'host'
+          ? { id: item.organiser.id, name: item.organiser.name }
+          : { id: guest.id, name: guest.name };
+
+      batch.set(ref.collection('comments').doc(), {
+        uid: author.id,
+        displayName: author.name,
+        photoURL: null,
+        text: comment.text,
+        isOrganiser: comment.from === 'host',
+        // Spaced out so the thread reads in order.
+        createdAt: Timestamp.fromDate(new Date(Date.now() - (thread.length - index) * 40 * 60_000)),
+      });
+    });
+
+    batch.set(ref, { checkedInCount, commentCount: thread.length }, { merge: true });
+    await batch.commit();
+  }
+
+  return activity;
+}
+
+async function seedProfiles(
+  hosted: Map<string, number>,
+  activity: Map<string, { rsvps: number; checkIns: number; categories: Map<string, number> }>,
+): Promise<void> {
+  console.log('[Seed] Ensuring demo organiser and neighbour profiles exist...');
   const batch = db.batch();
 
-  for (const organiser of Object.values(ORGANISERS)) {
-    const userRef = db.collection('users').doc(organiser.id);
-    batch.set(
-      userRef,
-      {
-        uid: organiser.id,
-        displayName: organiser.name,
-        email: `${organiser.id}@nearby-events.demo`,
-        photoURL: null,
-        bio: organiser.bio,
-        neighborhood: 'Coimbatore Central',
-        city: 'Coimbatore',
-        seedTag: SEED_TAG,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
+  const people = [
+    ...Object.values(ORGANISERS).map((person) => ({
+      id: person.id,
+      name: person.name,
+      bio: person.bio,
+      neighborhood: 'Coimbatore Central',
+    })),
+    ...NEIGHBOURS.map((person) => ({
+      id: person.id,
+      name: person.name,
+      bio: 'Lives nearby and turns up to things.',
+      neighborhood: person.neighborhood,
+    })),
+  ];
+
+  for (const person of people) {
+    const hostedCount = hosted.get(person.id) ?? 0;
+    const entry = activity.get(person.id);
+
+    const profile: Record<string, unknown> = {
+      uid: person.id,
+      displayName: person.name,
+      email: `${person.id}@nearby-events.demo`,
+      photoURL: null,
+      bio: person.bio,
+      neighborhood: person.neighborhood,
+      city: 'Coimbatore',
+      seedTag: SEED_TAG,
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    // Points are only (re)computed when this run actually created the activity behind
+    // them — otherwise a refresh would wipe what has accumulated since.
+    if (hostedCount > 0 || entry) {
+      const rsvps = entry?.rsvps ?? 0;
+      const checkIns = entry?.checkIns ?? 0;
+
+      // Mirrors POINTS in backend/src/services/gamificationService.ts.
+      profile.points = hostedCount * 20 + rsvps * 5 + checkIns * 15;
+      profile.stats = { hosted: hostedCount, rsvps, checkIns };
+      profile.categoryCounts = Object.fromEntries(entry?.categories ?? []);
+      profile.createdAt = FieldValue.serverTimestamp();
+    }
+
+    batch.set(db.collection('users').doc(person.id), profile, { merge: true });
   }
 
   await batch.commit();
-  console.log(`[Seed] Created / updated ${Object.keys(ORGANISERS).length} organiser profiles.`);
+  console.log(`[Seed] Created / updated ${people.length} demo profiles.`);
 }
 
+/**
+ * `--local` is the mode `npm run dev` uses. It refreshes the demo board on every start —
+ * which keeps the dates current and the live event live however long ago it was first
+ * seeded — but only ever against the emulator, so starting the dev server can never write
+ * demo data into a real Firestore.
+ */
+const LOCAL_ONLY = process.argv.includes('--local');
+
 async function seedEvents(): Promise<void> {
+  if (LOCAL_ONLY && !env.firestoreEmulatorHost) {
+    console.log('[Seed] Not running against the emulator — skipping the demo data refresh.');
+    return;
+  }
+
+  await waitForEmulator();
+
+  if (process.argv.includes('--if-empty')) {
+    const existing = await db.collection('events').limit(1).get();
+    if (!existing.empty) {
+      console.log('[Seed] The board already has events — leaving it as it is.');
+      return;
+    }
+  }
+
   const shouldClear = process.argv.includes('--clear');
   if (shouldClear) {
     await clearPreviouslySeeded();
   }
-
-  await seedOrganiserProfiles();
 
   const allEventsToSeed = [...UPCOMING_EVENTS, ...EXPIRED_EVENTS];
   console.log(
@@ -983,14 +1297,15 @@ async function seedEvents(): Promise<void> {
   let insertedCount = 0;
   let updatedCount = 0;
 
+  const seeded: SeededEvent[] = [];
+  const hostedNew = new Map<string, number>();
+
   for (let i = 0; i < allEventsToSeed.length; i += 20) {
     const chunk = allEventsToSeed.slice(i, i + 20);
     const batch = db.batch();
 
     for (const item of chunk) {
-      const date = dateStringWithOffset(item.daysFromNow);
-      const startsAt = combineDateTime(date, item.startTime);
-      const endsAt = combineDateTime(date, item.endTime);
+      const { date, startsAt, endsAt, startTime, endTime } = scheduleFor(item);
 
       const isActuallyExpired = item.isExpired || endsAt.getTime() < Date.now();
       const status: 'ACTIVE' | 'EXPIRED' = isActuallyExpired ? 'EXPIRED' : 'ACTIVE';
@@ -1003,12 +1318,16 @@ async function seedEvents(): Promise<void> {
         .limit(1)
         .get();
 
-      const docRef = existing.empty ? db.collection('events').doc() : existing.docs[0]!.ref;
-      if (existing.empty) {
+      const isNew = existing.empty;
+      const docRef = isNew ? db.collection('events').doc() : existing.docs[0]!.ref;
+      if (isNew) {
         insertedCount++;
+        hostedNew.set(item.organiser.id, (hostedNew.get(item.organiser.id) ?? 0) + 1);
       } else {
         updatedCount++;
       }
+
+      seeded.push({ ref: docRef, item, isNew, expired: isActuallyExpired, startsAt });
 
       const eventPayload = {
         // Core fields specified by user requirements
@@ -1017,10 +1336,11 @@ async function seedEvents(): Promise<void> {
         summary: item.summary,
         category: item.category,
         date: date,
-        time: item.timeFormatted,
-        startTime: item.startTime,
-        endTime: item.endTime,
+        time: item.liveNow ? `${formatClock(startTime)} - ${formatClock(endTime)}` : item.timeFormatted,
+        startTime,
+        endTime,
         location: item.location,
+        address: item.address,
         neighborhood: item.neighborhood,
         city: item.city,
         latitude: item.latitude,
@@ -1029,8 +1349,6 @@ async function seedEvents(): Promise<void> {
         imageUrl: item.image,
         imagePath: null,
         tags: item.tags,
-        rsvpCount: item.rsvpCount,
-        'RSVP count': item.rsvpCount,
 
         // Temporal & lifecycle fields
         startsAt: Timestamp.fromDate(startsAt),
@@ -1058,8 +1376,20 @@ async function seedEvents(): Promise<void> {
 
         // Audit tags
         seedTag: SEED_TAG,
-        createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
+
+        // Counters and the check-in code are set once. A refresh moves the dates forward
+        // but must not reset RSVPs people have made or reissue a code already handed out.
+        ...(isNew
+          ? {
+              rsvpCount: item.rsvpCount,
+              'RSVP count': item.rsvpCount,
+              checkedInCount: 0,
+              commentCount: 0,
+              checkInCode: item.liveNow ? LIVE_EVENT_CODE : randomCheckInCode(),
+              createdAt: FieldValue.serverTimestamp(),
+            }
+          : {}),
       };
 
       batch.set(docRef, eventPayload, { merge: true });
@@ -1068,14 +1398,25 @@ async function seedEvents(): Promise<void> {
     await batch.commit();
   }
 
+  const activity = await seedEngagement(seeded);
+  await seedProfiles(hostedNew, activity);
+
   console.log('\n================================================================');
   console.log(`✅ Demo/Seed completed successfully!`);
   console.log(`   - Upcoming events seeded: ${UPCOMING_EVENTS.length}`);
   console.log(`   - Expired events seeded:  ${EXPIRED_EVENTS.length}`);
   console.log(`   - Total seeded events:    ${allEventsToSeed.length} (${insertedCount} new, ${updatedCount} refreshed)`);
   console.log(`   - Categories covered:     Sports, Music, Food, Technology, Education, Community, Yard Sale`);
-  console.log(`   - Expired events:         Available for separate demonstration`);
+  console.log(`   - Live demo event:        check-in code ${LIVE_EVENT_CODE}`);
   console.log('================================================================\n');
+}
+
+/** Same alphabet as the API: no 0/O or 1/I/L, since the code gets typed by hand. */
+function randomCheckInCode(): string {
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i += 1) code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return code;
 }
 
 // Execute
@@ -1085,5 +1426,12 @@ seedEvents()
   })
   .catch((err) => {
     console.error('\n❌ Seed failed with error:', err);
+
+    // In dev the API should still start, so the error above is the whole consequence.
+    if (LOCAL_ONLY) {
+      console.error('[Seed] Continuing without demo data. Is Java installed? The emulators need it.');
+      process.exit(0);
+    }
+
     process.exit(1);
   });

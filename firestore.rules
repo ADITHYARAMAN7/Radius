@@ -34,11 +34,19 @@ service cloud.firestore {
 
       // A user may only ever write their own profile document.
       allow create: if isSelf(uid)
-                    && request.resource.data.uid == uid;
+                    && request.resource.data.uid == uid
+                    // A new profile starts with no points.
+                    && !('points' in request.resource.data)
+                    && !('stats' in request.resource.data);
 
       allow update: if isSelf(uid)
                     // uid is the document key — letting it change would orphan the doc.
-                    && request.resource.data.uid == resource.data.uid;
+                    && request.resource.data.uid == resource.data.uid
+                    // Neighbour points and the counters behind the badges are awarded by
+                    // the API alongside the action that earned them, never self-assigned.
+                    && request.resource.data.get('points', 0) == resource.data.get('points', 0)
+                    && request.resource.data.get('stats', {}) == resource.data.get('stats', {})
+                    && request.resource.data.get('categoryCounts', {}) == resource.data.get('categoryCounts', {});
 
       allow delete: if false;
 
@@ -48,6 +56,15 @@ service cloud.firestore {
        * would put an event in someone's list without an actual RSVP.
        */
       match /attending/{eventId} {
+        allow read: if isSelf(uid);
+        allow write: if false;
+      }
+
+      /**
+       * Bookmarks ("save for later"). Private to the owner — what someone is merely
+       * considering is nobody else's business — and written only through the API.
+       */
+      match /saved/{eventId} {
         allow read: if isSelf(uid);
         allow write: if false;
       }
@@ -113,8 +130,24 @@ service cloud.firestore {
 
         allow delete: if isSelf(uid);
 
-        // An RSVP has no mutable fields — cancel and re-join instead.
+        // An RSVP's only mutable field is checkedInAt, and that is set by the API's
+        // check-in transaction after it has verified the organiser's code. A client that
+        // could write it directly could mark itself as attended and farm points.
         allow update: if false;
+      }
+
+      /* ---------------------------------------------------- comments */
+
+      match /comments/{commentId} {
+        // The question-and-answer thread is as public as the event it sits under.
+        allow read: if true;
+
+        /**
+         * Writes go through the API only: it keeps commentCount in step inside a
+         * transaction, and it is what decides whether the author is the organiser.
+         * Allowing a direct create would let anyone post with isOrganiser set to true.
+         */
+        allow write: if false;
       }
     }
 
