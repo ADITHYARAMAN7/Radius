@@ -121,6 +121,68 @@ export function useEvents(
   };
 }
 
+/**
+ * All events in a calendar grid's date range. Same race protection as useEvents: a
+ * fast click through months cannot let an older month's response land last.
+ */
+export function useCalendarEvents(range: {
+  from: Date;
+  to: Date;
+  category: string | null;
+  neighborhood: string;
+  city: string;
+}) {
+  const { user, initialising } = useAuth();
+  const [events, setEvents] = useState<EventRecord[]>([]);
+  const [truncated, setTruncated] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
+  const [nonce, setNonce] = useState(0);
+  const latestRequest = useRef(0);
+
+  const key = JSON.stringify({ ...range, from: range.from.toISOString(), to: range.to.toISOString() });
+
+  useEffect(() => {
+    if (initialising) return;
+
+    const controller = new AbortController();
+    latestRequest.current += 1;
+    const requestId = latestRequest.current;
+    const parsed = JSON.parse(key) as { from: string; to: string; category: string | null; neighborhood: string; city: string };
+
+    setLoading(true);
+    setError(null);
+
+    api
+      .eventsInRange({ ...parsed, from: new Date(parsed.from), to: new Date(parsed.to) }, Boolean(user), controller.signal)
+      .then((result) => {
+        if (requestId !== latestRequest.current) return;
+        setEvents(result.items);
+        setTruncated(result.truncated);
+      })
+      .catch((caught: unknown) => {
+        if ((caught as Error).name === 'AbortError') return;
+        if (requestId !== latestRequest.current) return;
+        setError(caught);
+      })
+      .finally(() => {
+        if (requestId === latestRequest.current) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [key, user, initialising, nonce]);
+
+  const reload = useCallback(() => setNonce((value) => value + 1), []);
+
+  const applyRsvp = useCallback((eventId: string, attending: boolean, rsvpCount: number) => {
+    setEvents((current) =>
+      current.map((event) => (event.id === eventId ? { ...event, isAttending: attending, rsvpCount } : event)),
+    );
+  }, []);
+
+  return { events, truncated, loading, error, reload, applyRsvp };
+}
+
 /** Shared loader for "Events I created" and "Events I'm attending". */
 export function useMyEvents(kind: 'created' | 'attending') {
   const { user, initialising } = useAuth();

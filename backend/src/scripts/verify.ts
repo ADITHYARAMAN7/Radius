@@ -9,7 +9,7 @@
  */
 import { Timestamp, getDb, initFirebase } from '../config/firebase';
 import type { AuthUser } from '../middleware/auth';
-import { eventInputSchema } from '../middleware/validate';
+import { calendarQuerySchema, eventInputSchema } from '../middleware/validate';
 import {
   cancelEvent,
   createEvent,
@@ -20,6 +20,7 @@ import {
   listEvents,
   listEventsAttending,
   listEventsByCreator,
+  listEventsInRange,
   reactivateEvent,
   updateEvent,
 } from '../services/eventService';
@@ -601,6 +602,47 @@ async function main(): Promise<void> {
       options.filter((o) => placeKey(o.name) === 'rspuram').length === 1 &&
         options.filter((o) => placeKey(o.name) === 'peelamedu').length === 1,
     );
+  }
+
+  console.log('\n=== Calendar range ===');
+  {
+    // Local midnight today → 8 days later covers BASE_INPUT's "tomorrow".
+    const from = new Date();
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(from.getTime() + 8 * 24 * 60 * 60 * 1000);
+
+    const shown = await createEvent(
+      eventInputSchema.parse({ ...BASE_INPUT, title: 'Verification run: calendar visible event' }),
+      ORGANISER,
+    );
+    const hidden = await createEvent(
+      eventInputSchema.parse({ ...BASE_INPUT, title: 'Verification run: calendar cancelled event' }),
+      ORGANISER,
+    );
+    await cancelEvent(hidden.id, ORGANISER);
+
+    const range = await listEventsInRange({ from, to });
+    check('an event inside the range is returned', range.items.some((e) => e.id === shown.id));
+    check('a cancelled event is never returned', !range.items.some((e) => e.id === hidden.id));
+    check('nothing that has already ended is returned', range.items.every((e) => new Date(e.endsAt).getTime() >= Date.now()));
+    check('results are ordered by start time', range.items.every((e, i, all) => i === 0 || all[i - 1]!.startsAt <= e.startsAt));
+
+    const later = await listEventsInRange({ from: to, to: new Date(to.getTime() + 24 * 60 * 60 * 1000) });
+    check('an event outside the range is not returned', !later.items.some((e) => e.id === shown.id));
+
+    const otherCategory = await listEventsInRange({ from, to, category: 'Music' });
+    check('the category filter applies', !otherCategory.items.some((e) => e.id === shown.id));
+    const sameArea = await listEventsInRange({ from, to, neighborhood: 'PEELAMEDU' });
+    check('the neighbourhood filter applies (placeKey)', sameArea.items.some((e) => e.id === shown.id));
+
+    const iso = (d: Date) => d.toISOString();
+    check('a valid range passes validation', calendarQuerySchema.safeParse({ from: iso(from), to: iso(to) }).success);
+    check(
+      'a range over 6 weeks is rejected',
+      !calendarQuerySchema.safeParse({ from: iso(from), to: iso(new Date(from.getTime() + 50 * 86_400_000)) }).success,
+    );
+    check('to before from is rejected', !calendarQuerySchema.safeParse({ from: iso(to), to: iso(from) }).success);
+    check('a non-ISO date is rejected', !calendarQuerySchema.safeParse({ from: '2026-10-01', to: iso(to) }).success);
   }
 
   console.log('\n=== Snap-a-Poster normalisation (no Gemini call) ===');

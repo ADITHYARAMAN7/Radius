@@ -100,7 +100,8 @@ steps:
       - --min-instances=0
       - --max-instances=10
       - --timeout=60s
-      - --set-env-vars=NODE_ENV=production,SERVE_STATIC=true,GCP_PROJECT_ID=$PROJECT_ID,GCS_BUCKET=${_BUCKET},AI_PROVIDER=${_AI_PROVIDER},VERTEX_LOCATION=${_VERTEX_LOCATION}
+      # TZ: the Today / Tomorrow / Weekend filters use the server's local day; Cloud Run defaults to UTC.
+      - --set-env-vars=NODE_ENV=production,TZ=Asia/Kolkata,SERVE_STATIC=true,GCP_PROJECT_ID=$PROJECT_ID,GCS_BUCKET=${_BUCKET},AI_PROVIDER=${_AI_PROVIDER},VERTEX_LOCATION=${_VERTEX_LOCATION}
       - --set-secrets=GEMINI_API_KEY=gemini-api-key:latest,MAINTENANCE_TOKEN=maintenance-token:latest
 
 images:

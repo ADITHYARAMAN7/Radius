@@ -249,3 +249,14 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   1 past clean-up → 42 events (34 upcoming + 8 past), 15 neighbourhoods. All seed events pass the form's
   validation rules; seed:clear + seed verified on the emulator (no duplicates). verify 123/123.
   Next: feature 5 (month calendar view).
+- Oct 2: **Feature 5 done — month calendar** on Explore (List | Map | Calendar). URL:
+  `?view=calendar&day=YYYY-MM-DD` (`day`, because `date` is already the Today/Weekend filter). New
+  `GET /api/events/calendar?from&to` (+ category/neighborhood/city): browser sends its own local midnights,
+  span ≤ 43 days (Zod), status ACTIVE + startsAt range on the existing index (no new index), not-yet-ended
+  only, cap 300 with a `truncated` flag. Grouped by local day of startsAt (tested: 1:00 AM IST event stored
+  as previous-day UTC lands on the right day). Past days greyed/disabled; empty month → "Post an event".
+  Events can't span days in our model, so each shows on its start day. verify 134/134.
+  **Found & fixed:** Today/Tomorrow/Weekend filters use the server's local day, and Cloud Run runs in UTC →
+  added `TZ=Asia/Kolkata` to `cloudbuild.yaml` and the deployment guide. **Tonight:** confirm on Cloud Run
+  that the "Today" filter shows an event starting before 5:30 AM IST.
+  Next: feature 6 (PWA, if time) or 7 (final check + PR).

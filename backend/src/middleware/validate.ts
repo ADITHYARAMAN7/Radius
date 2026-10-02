@@ -113,6 +113,30 @@ export const eventQuerySchema = z.object({
   radiusKm: z.coerce.number().min(1).max(500).optional(),
 });
 
+/** A 6-week month grid plus a day of margin either side. */
+const MAX_CALENDAR_SPAN_MS = 43 * 24 * 60 * 60 * 1000;
+
+/**
+ * Month view range. `from`/`to` are instants the browser computed from its own local
+ * midnights, so the server never has to guess the user's timezone.
+ */
+export const calendarQuerySchema = z
+  .object({
+    from: z.string().datetime({ offset: true, message: 'from must be an ISO date-time.' }),
+    to: z.string().datetime({ offset: true, message: 'to must be an ISO date-time.' }),
+    category: categorySchema.optional(),
+    neighborhood: optionalString,
+    city: optionalString,
+  })
+  .superRefine((value, ctx) => {
+    const span = Date.parse(value.to) - Date.parse(value.from);
+    if (!(span > 0)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['to'], message: 'to must be after from.' });
+    } else if (span > MAX_CALENDAR_SPAN_MS) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['to'], message: 'A calendar range can be at most 6 weeks.' });
+    }
+  });
+
 export const profileUpdateSchema = z.object({
   displayName: trimmed(80).min(2, 'Your name needs at least 2 characters.').optional(),
   bio: trimmed(500).optional(),

@@ -499,6 +499,63 @@ export async function listEvents(
   };
 }
 
+/** Safety cap for one calendar grid; far above what a 6-week window holds today. */
+const CALENDAR_CAP = 300;
+
+export interface CalendarRangeOptions {
+  from: Date;
+  to: Date;
+  category?: Category;
+  neighborhood?: string;
+  city?: string;
+}
+
+/**
+ * Every active, not-yet-finished event starting in [from, to) — the month view needs the
+ * whole range, not one page. The browser sends the range already aligned to its own
+ * midnight, so day boundaries follow the user's timezone rather than the server's.
+ *
+ * Uses the existing status + startsAt index; the place and category filters are applied
+ * in memory with placeKey, exactly like the list endpoint's fallback filters.
+ */
+export async function listEventsInRange(
+  options: CalendarRangeOptions,
+  viewerUid?: string,
+): Promise<{ items: EventRecord[]; truncated: boolean }> {
+  const snapshot = await getDb()
+    .collection(EVENTS)
+    .where('status', '==', 'ACTIVE')
+    .where('startsAt', '>=', Timestamp.fromDate(options.from))
+    .where('startsAt', '<', Timestamp.fromDate(options.to))
+    .orderBy('startsAt', 'asc')
+    .limit(CALENDAR_CAP + 1)
+    .get();
+
+  const truncated = snapshot.size > CALENDAR_CAP;
+  const now = Date.now();
+
+  // Same expiry rule as the board: a finished event is never shown, even before the
+  // scheduled sweep flips its status — so past days stay empty and today shows only
+  // what has not ended yet.
+  let items = snapshot.docs
+    .slice(0, CALENDAR_CAP)
+    .map((doc) => toEventRecord(doc))
+    .filter((event) => new Date(event.endsAt).getTime() >= now);
+
+  if (options.category) items = items.filter((event) => event.category === options.category);
+  if (options.neighborhood) {
+    const target = placeKey(options.neighborhood);
+    items = items.filter((event) => placeKey(event.neighborhood) === target);
+  }
+  if (options.city) {
+    const target = placeKey(options.city);
+    items = items.filter((event) => placeKey(event.city) === target);
+  }
+
+  await decorateForViewer(items, viewerUid);
+  return { items, truncated };
+}
+
 export async function listEventsByCreator(uid: string, viewerUid?: string): Promise<EventRecord[]> {
   const snapshot = await getDb()
     .collection(EVENTS)

@@ -171,6 +171,25 @@ export const api = {
       signal,
     }),
 
+  /**
+   * Every event starting in [from, to), unpaginated — for the month calendar. `from`/`to`
+   * are the browser's local midnights, so days follow the viewer's timezone.
+   */
+  eventsInRange: (
+    range: { from: Date; to: Date; category?: string | null; neighborhood?: string; city?: string },
+    signedIn: boolean,
+    signal?: AbortSignal,
+  ) => {
+    const params = new URLSearchParams({ from: range.from.toISOString(), to: range.to.toISOString() });
+    if (range.category) params.set('category', range.category);
+    if (range.neighborhood?.trim()) params.set('neighborhood', range.neighborhood.trim());
+    if (range.city?.trim()) params.set('city', range.city.trim());
+    return request<{ items: EventRecord[]; truncated: boolean }>(`/events/calendar?${params}`, {
+      auth: signedIn,
+      signal,
+    });
+  },
+
   getEvent: (id: string, signedIn: boolean, signal?: AbortSignal) =>
     request<EventDetailResponse>(`/events/${id}`, { auth: signedIn, signal }),
 

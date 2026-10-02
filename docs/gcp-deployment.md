@@ -360,7 +360,7 @@ gcloud run deploy "$SERVICE" \
   --service-account="${SERVICE}-run@${PROJECT_ID}.iam.gserviceaccount.com" \
   --memory=512Mi --cpu=1 \
   --min-instances=0 --max-instances=10 --timeout=60s \
-  --set-env-vars="NODE_ENV=production,SERVE_STATIC=true,GCP_PROJECT_ID=${PROJECT_ID},GCS_BUCKET=${BUCKET},AI_PROVIDER=${AI_PROVIDER:-api},VERTEX_LOCATION=${VERTEX_LOCATION:-us-central1}" \
+  --set-env-vars="NODE_ENV=production,TZ=Asia/Kolkata,SERVE_STATIC=true,GCP_PROJECT_ID=${PROJECT_ID},GCS_BUCKET=${BUCKET},AI_PROVIDER=${AI_PROVIDER:-api},VERTEX_LOCATION=${VERTEX_LOCATION:-us-central1}" \
   --set-secrets="GEMINI_API_KEY=gemini-api-key:latest,MAINTENANCE_TOKEN=maintenance-token:latest"
 ```
 
@@ -416,6 +416,7 @@ promoted between environments.
 | `PORT` | Cloud Run | Do not set it yourself |
 | `NODE_ENV` | `--set-env-vars` | `production` |
 | `SERVE_STATIC` | `--set-env-vars` | `true` |
+| `TZ` | `--set-env-vars` | `Asia/Kolkata` — "Today"/"Weekend" filters use the server's local day; Cloud Run defaults to UTC |
 | `GCP_PROJECT_ID` | `--set-env-vars` | |
 | `GCS_BUCKET` | `--set-env-vars` | No `gs://` prefix |
 | `AI_PROVIDER` | `--set-env-vars` | `api` or `vertex` |
