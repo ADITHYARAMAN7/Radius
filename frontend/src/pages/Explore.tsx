@@ -171,8 +171,9 @@ export default function Explore() {
     [debouncedSearch, filters, page, view],
   );
 
-  // The calendar loads its own date range, so the paged list request is held back there.
-  const { data, events, loading, refreshing, error, reload, applyRsvp } = useEvents(query, view !== 'calendar');
+  // Still runs in calendar view: one small page keeps the filter bar's "N events" count
+  // honest; the calendar loads its own date range separately.
+  const { data, events, loading, refreshing, error, reload, applyRsvp } = useEvents(query);
   const { toggle, isPending } = useRsvp({ onChange: applyRsvp });
 
   const onChangeFilters = useCallback((patch: Partial<EventFiltersState>) => {

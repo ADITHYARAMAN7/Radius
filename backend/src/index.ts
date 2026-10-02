@@ -147,7 +147,13 @@ export function createApp(): express.Express {
         }),
       );
 
-      app.get('*', (_req, res) => {
+      app.get('*', (req, res) => {
+        // A missing file (e.g. /assets/old-hash.js after a deploy) must 404, not come back
+        // as HTML — the browser would otherwise fail with a confusing MIME-type error.
+        if (path.extname(req.path)) {
+          res.status(404).end();
+          return;
+        }
         res.sendFile(path.join(distDir, 'index.html'));
       });
 

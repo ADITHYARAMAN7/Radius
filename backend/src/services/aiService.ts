@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, Type, type GenerateContentParameters, type GenerateContentResponse } from '@google/genai';
 import { capabilities, env } from '../config/env';
 import { logger } from '../config/logger';
 import { AppError } from '../middleware/error';
@@ -30,6 +30,47 @@ function getClient(): GoogleGenAI {
 
   logger.info('Gemini client initialised', { provider: env.aiProvider, model: env.geminiModel });
   return client;
+}
+
+/** Per attempt; two attempts plus the pause stay under ~26s in the worst case. */
+const ATTEMPT_TIMEOUT_MS = 12_000;
+const RETRY_DELAY_MS = 1_500;
+
+/**
+ * Gemini's "busy" answers (503 high demand, 429 quota burst) and our own per-attempt
+ * timeout. Worth one retry; anything else (bad key, bad request) is not.
+ */
+function isRetryableGeminiError(error: unknown): boolean {
+  const { name = '', message = '' } = error as { name?: string; message?: string };
+  return name === 'AbortError' || /aborted|"code":\s*(503|429)|UNAVAILABLE|RESOURCE_EXHAUSTED/i.test(message);
+}
+
+/**
+ * Every Gemini call goes through here: a per-attempt timeout, and when the main model is
+ * busy, one retry on GEMINI_FALLBACK_MODEL — a model under "high demand" often stays that
+ * way for minutes, so retrying the same one rarely helps.
+ */
+async function generateWithFallback(
+  purpose: string,
+  params: Omit<GenerateContentParameters, 'model'>,
+): Promise<{ response: GenerateContentResponse; model: string }> {
+  const ai = getClient();
+  const attempt = (model: string) =>
+    ai.models.generateContent({
+      ...params,
+      model,
+      config: { ...params.config, abortSignal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS) },
+    });
+
+  try {
+    return { response: await attempt(env.geminiModel), model: env.geminiModel };
+  } catch (error) {
+    if (!isRetryableGeminiError(error)) throw error;
+    const retryModel = env.geminiFallbackModel || env.geminiModel;
+    logger.warn('Gemini busy or slow, retrying once', { purpose, model: env.geminiModel, retryModel });
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    return { response: await attempt(retryModel), model: retryModel };
+  }
 }
 
 const SUGGESTION_SCHEMA = {
@@ -96,7 +137,7 @@ export interface AssistInput {
  * event creation never depends on this succeeding.
  */
 export async function generateEventSuggestion(input: AssistInput): Promise<AiSuggestion> {
-  const ai = getClient();
+  getClient();
 
   const place = [input.neighborhood, input.city].filter(Boolean).join(', ');
 
@@ -115,13 +156,13 @@ export async function generateEventSuggestion(input: AssistInput): Promise<AiSug
     .join('\n');
 
   try {
-    const response = await ai.models.generateContent({
-      model: env.geminiModel,
+    const { response, model } = await generateWithFallback('event suggestion', {
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         temperature: 0.7,
-        maxOutputTokens: 1200,
+        // Newer Gemini models spend part of this budget "thinking"; too low a cap truncates the JSON.
+        maxOutputTokens: 4096,
         responseMimeType: 'application/json',
         responseSchema: SUGGESTION_SCHEMA,
       },
@@ -142,7 +183,7 @@ export async function generateEventSuggestion(input: AssistInput): Promise<AiSug
 
     logger.info('AI suggestion generated', {
       provider: env.aiProvider,
-      model: env.geminiModel,
+      model,
       category: suggestion.category,
     });
 
@@ -197,17 +238,16 @@ export interface SearchIntent {
  * language work; the existing Firestore pipeline does the retrieval.
  */
 export async function parseSearchIntent(query: string): Promise<SearchIntent> {
-  const ai = getClient();
+  getClient();
 
   try {
-    const response = await ai.models.generateContent({
-      model: env.geminiModel,
+    const { response } = await generateWithFallback('search intent', {
       contents: `Extract search filters from this query about local community events:\n"${query}"`,
       config: {
         systemInstruction:
           'You convert a natural-language query into structured event-search filters. Only extract what the query actually says; never invent a city or a date window.',
         temperature: 0,
-        maxOutputTokens: 400,
+        maxOutputTokens: 2048,
         responseMimeType: 'application/json',
         responseSchema: SEARCH_SCHEMA,
       },
@@ -514,26 +554,13 @@ export interface ExtractInput {
   timezone: string;
 }
 
-/** Per attempt; two attempts plus the pause stay under ~26s in the worst case. */
-const ATTEMPT_TIMEOUT_MS = 12_000;
-const RETRY_DELAY_MS = 1_500;
-
-/**
- * Gemini's "busy" answers (503 high demand, 429 quota burst) and our own per-attempt
- * timeout. Worth one retry; anything else (bad key, bad request) is not.
- */
-function isRetryableGeminiError(error: unknown): boolean {
-  const { name = '', message = '' } = error as { name?: string; message?: string };
-  return name === 'AbortError' || /aborted|"code":\s*(503|429)|UNAVAILABLE|RESOURCE_EXHAUSTED/i.test(message);
-}
-
 /**
  * Snap-a-Poster: reads a poster photo and/or a forwarded message and returns form values
  * for the organiser to review. Never posts anything, and never fills a gap with a guess:
  * when Gemini is unavailable the caller gets an error, not made-up data.
  */
 export async function extractEventDetails(input: ExtractInput): Promise<ExtractionResult> {
-  const ai = getClient();
+  getClient();
 
   const timezone = resolveTimezone(input.timezone);
   const now = nowInTimezone(timezone);
@@ -556,9 +583,10 @@ export async function extractEventDetails(input: ExtractInput): Promise<Extracti
     parts.push({ inlineData: { mimeType: input.image.mimeType, data: input.image.data.toString('base64') } });
   }
 
-  const generate = (model: string) =>
-    ai.models.generateContent({
-      model,
+  let usedModel = env.geminiModel;
+
+  try {
+    const { response, model } = await generateWithFallback('poster extraction', {
       contents: [{ role: 'user', parts }],
       config: {
         systemInstruction: EXTRACT_SYSTEM_INSTRUCTION,
@@ -566,28 +594,9 @@ export async function extractEventDetails(input: ExtractInput): Promise<Extracti
         maxOutputTokens: 4096,
         responseMimeType: 'application/json',
         responseSchema: EXTRACT_SCHEMA,
-        abortSignal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
       },
     });
-
-  let usedModel = env.geminiModel;
-
-  try {
-    let response;
-    try {
-      response = await generate(usedModel);
-    } catch (error) {
-      if (!isRetryableGeminiError(error)) throw error;
-      // A model under "high demand" often stays that way for minutes, so the one retry
-      // goes to the fallback model when one is configured.
-      usedModel = env.geminiFallbackModel || env.geminiModel;
-      logger.warn('Gemini busy or slow, retrying poster extraction once', {
-        model: env.geminiModel,
-        retryModel: usedModel,
-      });
-      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-      response = await generate(usedModel);
-    }
+    usedModel = model;
 
     const raw = response.text;
     if (!raw) throw new Error('Gemini returned an empty response');
