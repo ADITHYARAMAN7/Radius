@@ -35,7 +35,8 @@ export function parseAddressComponents(components: google.maps.places.AddressCom
   const find = (type: string) => components.find((c) => c.types.includes(type))?.longText?.trim() || '';
 
   const locality = find('locality');
-  const district = find('administrative_area_level_2');
+  // Google labels Coimbatore as level 2 (district) for some places and level 3 (taluk) for others.
+  const district = find('administrative_area_level_2') || find('administrative_area_level_3');
 
   let neighborhood = find('sublocality_level_1') || find('sublocality') || find('neighborhood');
   let city = locality || district;
@@ -43,6 +44,15 @@ export function parseAddressComponents(components: google.maps.places.AddressCom
   if (!neighborhood && locality) {
     neighborhood = locality;
     city = district || locality;
+  }
+
+  // Inside Coimbatore district, Google often makes a village or suburb the "locality"
+  // (Ettimadai, New Siddhapudur) with an even finer sublocality under it ("Amritanagar").
+  // The board files those under the town as neighbourhood and Coimbatore as city — the
+  // same rule the OpenStreetMap suggestions use.
+  if (/coimbatore/i.test(district) && locality && placeKey(locality) !== placeKey(district)) {
+    neighborhood = locality;
+    city = 'Coimbatore';
   }
 
   // Picking a whole city gives no neighbourhood; leave it for the organiser to type.

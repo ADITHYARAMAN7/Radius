@@ -362,3 +362,13 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   clear messages for no internet / mic blocked / no mic (tested with a simulated microphone); visible app name
   is now **Nearby-Events** everywhere; home stat "City: Coimbatore". 16/16 new UI checks pass.
   **Next:** create the Maps key (then test Google map + Places live), working Gemini key, then cloud deployment.
+- Oct 3: **Google Maps key added** (Suhas's project; in `frontend/.env`, gitignored). Tested live in Chrome:
+  Explore + event pages show Google Maps (35 pins, no console errors); Places autocomplete widget types,
+  suggests and fills venue/neighbourhood/city/pin — 9/9 picks over 3 runs (Brookefields → Ram Nagar,
+  Amrita → Ettimadai, Gandhipuram Central Bus Stand → Ram Nagar). Fixed: Google sometimes labels Coimbatore
+  as administrative_area_level_3 and makes villages a "locality" (Amrita → city "Ettimadai") → inside
+  Coimbatore district the town is the neighbourhood and the city is Coimbatore (same rule as Photon).
+  All 18 seed neighbourhood spellings match Google's. **⚠ The key is NOT restricted yet** (works from any
+  website and with no referrer) — restrict it (HTTP referrers + API restriction + Places daily cap) before
+  deploying. Card for GCP billing was failing; Cloud Run/Storage still blocked on billing (teammate card or
+  mentor credits). Gemini: still free-tier quota.
