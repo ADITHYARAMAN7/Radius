@@ -42,7 +42,11 @@ $subs = @(
 Push-Location $root
 try {
   Write-Host "Building and deploying $Service to $Project ($Region)... (about 5 minutes)"
+  # gcloud prints progress on stderr; with 'Stop', PowerShell 5.1 treats that as a failure
+  # whenever output is redirected. Judge the build by its exit code instead.
+  $ErrorActionPreference = 'Continue'
   gcloud builds submit --config cloudbuild.yaml --project $Project --region $Region --substitutions $subs
+  if ($LASTEXITCODE -ne 0) { throw "Build or deploy failed (exit code $LASTEXITCODE) - see the log above." }
   $url = gcloud run services describe $Service --region $Region --project $Project --format='value(status.url)'
   Write-Host "`nLive at: $url"
   Write-Host "Health:  $url/api/health"
