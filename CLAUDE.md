@@ -2,7 +2,7 @@
 Cognizant NPN GCP Hackathon · Use Case 5
 
 This file is the shared brief for everyone on the team and for Claude Code. Read it fully before doing anything.
-Last updated: Oct 2, 2026 (after reviewing both teammates' code).
+Last updated: Oct 2, 2026 (plan changed: local-first build today, deployment moved to tonight/tomorrow).
 
 ---
 
@@ -20,7 +20,8 @@ Last updated: Oct 2, 2026 (after reviewing both teammates' code).
   **breadth of sample data**, architecture considerations, performance, UX, integration options, reusability,
   ease of implementation, real-time decision capability, **monitoring approach**, presentation quality,
   mentor participation.
-- Original brief: `docs/hackathon_brief.pdf` (add it to the repo if missing). Use Case 5 only.
+- Original brief: `docs/hackathon_brief.pdf` — kept locally only, **never committed** (it is marked
+  Cognizant-confidential and contains the other teams' use cases). Use Case 5 only.
 
 ### Use Case 5 requirements from the brief
 Must have:
@@ -38,6 +39,16 @@ Listed features:
 ## 2. What we're actually building on (decided Oct 2)
 Two teammates built separate versions. **Decision: Kanish's version (`main` branch) is the base.**
 Adhi's Flask version is a prototype; we only port ideas from it (see §6).
+
+### Branches — what we take from where
+- `main` = the foundation. **Never commit to main, never merge into main.** All work goes on `suhas-dev`,
+  pushed to `origin/suhas-dev`. At the very end: one pull request `suhas-dev → main` for Kanish to review.
+- `thahseen` = identical to main (same commit) — ignore it.
+- `adhi` = separate Flask app. **Do not merge it or copy its code.** We only RE-IMPLEMENT one idea from it
+  (Snap-a-Poster) properly inside main's architecture. Do NOT bring over: in-memory storage, device-id RSVP
+  without login, unauthenticated delete, its date handling, its fake "mock" AI fallback (it invents a date two
+  days out), "Ask the Board" and "Community Pulse" (main already has AI search and the Insights page), or any
+  feature its README claims but its code doesn't implement (Smart Trust Layer, Plan My Trip, Live Board).
 
 ### Stack (main)
 - `frontend/` — React 18 + TypeScript + Vite + Tailwind. Firebase Auth (login) in the browser.
@@ -71,27 +82,40 @@ Adhi's Flask version is a prototype; we only port ideas from it (see §6).
 
 ---
 
-## 3. Priority to-do list (do in this order)
-1. **Deploy to Cloud Run NOW** (Oct 2–3), following `docs/gcp-deployment.md`. It needs a Firebase project,
-   service account, Firestore DB + rules + indexes, Storage bucket, Maps key, Secret Manager, Cloud Build.
-   A working public URL is worth more than any new feature. Seed the deployed DB.
-2. **Fix the location input (biggest UX/data problem).** Today the form has free-text Neighbourhood + City and
-   asks users to paste latitude/longitude copied from Google Maps. That brings back inconsistent localities
-   ("Lane 12 RK Nagar" vs "Radha Krishna Nagar"). Add **Google Places Autocomplete** to the address field
-   (the Maps JS loader already exists in `EventMap.tsx` — reuse it, load the `places` library).
-   On selection, auto-fill: address, neighborhood (prefer `sublocality_level_1` → `sublocality` → `locality`),
-   city (`locality`), latitude, longitude. Keep fields editable as a fallback; hide raw lat/lng inputs.
-   If no Maps key is configured, the form must still work with manual entry.
-3. **Port "Snap-a-Poster" from Adhi's version**: upload a poster photo or paste a forwarded WhatsApp message →
-   Gemini extracts title/date/time/location/category/description → pre-fills the create form for review.
-   Fit it into the existing AI assist route/flow; reuse the existing Gemini client and rate limiting.
+## 3. Priority to-do list
+**Change of plan (Oct 2):** Kanish isn't available, so Cloud Run deployment moves to tonight / tomorrow morning.
+Today everything runs and is tested **locally** on Suhas's Windows laptop (PowerShell), using the **Firebase
+emulators** (Firestore + Auth) instead of a real GCP project, plus a Gemini API key from Google AI Studio.
+There is **no Google Maps key yet**.
+
+### Features today — in this order, one at a time (a separate prompt for each)
+1. **Local setup**: Firebase emulators (Firestore + Auth) + seeded demo data + fix the `npm run install:all`
+   quirk (`npm install --prefix` adds a stray `"nearby-objects": "file:.."` dependency to both package.json files).
+2. **Snap-a-Poster** (idea from Adhi, re-implemented): upload a poster photo or paste a forwarded WhatsApp
+   message → Gemini extracts title/date/time/location/category/description → pre-fills the Create Event form
+   for the user to review. Reuse the existing Gemini client, `requireAuth` and the per-user AI throttle.
+   If AI is unavailable, show a clear message and let the user fill the form manually — never invent data.
    Credit Adhi in the slides.
-4. **Month calendar view** (only if 1–3 are done): month grid with event counts per day → click a day →
-   list of that day's events. Board/grid stays the default view (the brief requires the card grid).
-5. **Monitoring for the slides**: screenshots of Cloud Logging (structured logs already exist), a Cloud Run
-   dashboard, an uptime check + alert. Set up the Cloud Scheduler job for `/api/maintenance/expire`.
-6. **Presentation & video**: update `docs/presentation-slides.md` to the final reality, build the 8–10 slide
-   deck, record a 2–3 min demo video, rehearse. Everyone must be able to explain the architecture.
+3. **Google Places Autocomplete** for location. Today the form has free-text Neighbourhood + City and asks for
+   raw latitude/longitude, which brings back inconsistent localities ("Lane 12 RK Nagar" vs "Radha Krishna
+   Nagar"). Reuse the Maps loader in `EventMap.tsx` and load the `places` library. On selection, auto-fill
+   address, neighborhood (`sublocality_level_1` → `sublocality` → `locality`), city (`locality`), lat, lng.
+   Keep fields editable; hide raw lat/lng inputs. **With no Maps key (today's case) the form must fall back to
+   the current manual fields.**
+4. **"Popular" badge** on event cards + a few Amrita/Ettimadai demo events in the seed data.
+5. **Month calendar view**: month grid with event counts per day → click a day → that day's events.
+   The card grid stays the default home view (the brief requires it).
+6. **PWA "Add to Home Screen"** — only if time allows.
+7. **Final check**: full regression test, update docs/slide text to reality, update this log, open the
+   pull request `suhas-dev → main`.
+
+### Tonight / tomorrow morning (with Kanish)
+- **Deploy to Cloud Run** following `docs/gcp-deployment.md`: Firebase project, service account, Firestore DB +
+  rules + indexes, Storage bucket, Maps key, Secret Manager, Cloud Build. Seed the deployed DB.
+- **Monitoring for the slides**: Cloud Logging screenshots (structured logs already exist), Cloud Run
+  dashboard, uptime check + alert, Cloud Scheduler job for `/api/maintenance/expire`.
+- **Presentation & video**: 8–10 slide deck from `docs/presentation-slides.md`, 2–3 min demo video, rehearse.
+  Everyone must be able to explain the architecture.
 
 ---
 
@@ -105,7 +129,8 @@ Adhi's Flask version is a prototype; we only port ideas from it (see §6).
 - Google Maps Platform free caps since March 2025 are per-SKU (e.g. 10,000/month for Essentials SKUs);
   hackathon usage is far below them, but the quota cap is the real safety net.
 - Gemini key only in `.env` locally and Secret Manager in prod — never committed, never a build arg.
-- `.env`, `.env.*` (except `.env.example`) and `service-account.json` must never be committed.
+- `.env`, `.env.*` (except `.env.example`), `service-account*.json` and `docs/hackathon_brief.pdf` must never
+  be committed (`.gitignore` covers the key files).
 - Cloud Build uses `E2_HIGHCPU_8` — costs a little per build from the credit; fine, but don't loop rebuilds.
 
 ---
@@ -133,17 +158,32 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   `TypeError` silently caught → past events are **never** hidden.
 - `DELETE /api/events/<id>` has no auth — anyone can delete any event.
 - Uses Gemini model name `gemini-3.8-flash` (unverified); main uses `gemini-2.5-flash`.
-- Worth porting: **Snap-a-Poster** (§3 item 3). "Ask the Board" overlaps with main's existing AI search.
+- Its Snap-a-Poster fallback returns made-up details (a date two days out) when Gemini fails.
+- Worth re-implementing: **Snap-a-Poster** only (§3 item 2). See the branches rules in §2.
 
 ---
 
 ## 7. How to work with me (the user)
 - I'm a student and not strong in backend yet. Explain what you're doing in plain language, briefly.
   When something involves GCP setup, give me exact console clicks or commands step by step.
-- One feature at a time: plan briefly → implement → run `npm run typecheck` and `npm run build` → tell me how to
-  test it in the browser → commit with a clear message. No big unrelated refactors — this codebase works; respect
-  its existing patterns (services/routes/middleware split, Zod validation, logger, UI components in `components/ui`).
+- All commands must work in **Windows PowerShell**.
 - Before adding anything not in §3, check it against the priorities and the remaining days.
+
+### Rules for every feature
+1. **Plan first**: a short plan listing which files will be touched and why. Wait for Suhas's "go".
+2. **Additive changes only.** Don't refactor, rename or restyle existing code unless the feature truly needs it
+   (and say so). Follow existing patterns: routes → services, Zod validation via `middleware/validate.ts`, the
+   shared logger, `AppError`, `requireAuth` + the existing per-user AI throttle, UI primitives in
+   `components/ui`, the existing `CATEGORIES` list.
+3. **Degrade gracefully**: if the Gemini key / Maps key / Storage isn't configured, the app still works and
+   shows a clear message — never crashes, never invents data.
+4. **Check**: `npm run typecheck` and `npm run build`; if the emulators are running, also
+   `npm run verify --prefix backend` against them.
+5. **Test instructions**: exact step-by-step browser test, including at least one edge-case test.
+6. **Commit + push `suhas-dev`**: check `git status` and `git diff --stat` first; revert unrelated changes
+   (e.g. package.json edits caused by npm). Never commit `.env*`, `service-account*.json`, or the brief PDF.
+7. **Bugs found in existing code**: report them; fix only if small and directly related, otherwise list them
+   here for later.
 - If something in this file looks wrong or outdated compared to the code, tell me instead of silently ignoring it.
 - At the end of every session, update the Progress log below.
 
@@ -157,3 +197,8 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
 ## 9. Progress log
 - Oct 2: Brief analysed, plan agreed. Both versions reviewed; main chosen as base. CLAUDE.md rewritten for the
   real stack. Next: deploy main to Cloud Run, then Places Autocomplete in the event form.
+- Oct 2 (later): On `suhas-dev`: `.gitignore` now blocks GCP key files; README port (8080) and seed command
+  fixed; unused `backend/src/scripts/seed.ts` removed. Branches compared: `thahseen` = main; from `adhi` only
+  Snap-a-Poster is worth re-implementing. **Plan changed**: Kanish unavailable → deployment moved to
+  tonight/tomorrow; today = local build with Firebase emulators, features in the §3 order.
+  Next: feature 1 (local emulator setup).
