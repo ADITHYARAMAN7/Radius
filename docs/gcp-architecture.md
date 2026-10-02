@@ -1,4 +1,4 @@
-# Google Cloud architecture — Nearby-objects
+# Google Cloud architecture — Nearby-Events
 
 > Written for judges and reviewing engineers: what each Google Cloud service does here,
 > why it was chosen over the alternatives, and how it fails.
@@ -302,7 +302,7 @@ configured at all.
 
 ### Artifact Registry
 
-Stores container images at `REGION-docker.pkg.dev/PROJECT/nearby-objects`. Replaces the
+Stores container images at `REGION-docker.pkg.dev/PROJECT/nearby-events`. Replaces the
 deprecated Container Registry.
 
 ### Cloud Build
@@ -330,7 +330,7 @@ deprecated Container Registry.
 | `GCS_BUCKET` | for images | Bucket name, no `gs://` |
 | `AI_PROVIDER` | no | `api` or `vertex` |
 | `GEMINI_API_KEY` | if `api` | **From Secret Manager** |
-| `VERTEX_LOCATION` | if `vertex` | Defaults `us-central1` |
+| `VERTEX_LOCATION` | if `vertex` | Defaults `global` (Flash-Lite is only served there) |
 | `MAINTENANCE_TOKEN` | for Scheduler | **From Secret Manager** |
 | `CORS_ORIGINS` | no | Same-origin is always allowed |
 | `GOOGLE_APPLICATION_CREDENTIALS` | **no** | **Leave unset on Cloud Run** — the attached service account is used automatically |
@@ -350,7 +350,7 @@ deprecated Container Registry.
 
 ## IAM: least privilege
 
-The runtime service account `nearby-objects-run@PROJECT.iam.gserviceaccount.com` holds
+The runtime service account `nearby-events-run@PROJECT.iam.gserviceaccount.com` holds
 only what the application actually uses. The default Compute service account is
 deliberately **not** used — it is far broader than required.
 

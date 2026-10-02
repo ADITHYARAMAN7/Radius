@@ -9,13 +9,10 @@
 
 Run through this ten minutes before, not during.
 
-- [ ] `npm run seed` — demo events are generated **relative to today**, so they are
-      always genuinely upcoming. Re-seed if the board was seeded on a previous day.
-- [ ] **Set `--min-instances=1` on Cloud Run.** A cold start in front of judges is the
-      one avoidable own goal. Put it back to 0 afterwards.
-      ```bash
-      gcloud run services update nearby-objects --min-instances=1 --region=asia-south1
-      ```
+- [ ] **Run `.\scripts\demo-day.ps1`** in PowerShell from the repo folder. It re-seeds the live board
+      (demo events are generated **relative to today**, so ones seeded days earlier have started to expire)
+      and sets `--min-instances=1` on Cloud Run, because a cold start in front of judges is the one avoidable
+      own goal. Afterwards run `.\scripts\demo-day.ps1 -Off` to go back to scale-to-zero.
 - [ ] Open `/api/health` and confirm `firestore: connected` and `gemini: configured`.
 - [ ] Sign in **once** beforehand so you are not typing a password on stage.
 - [ ] Have a second tab already on `/insights` — switching tabs is faster than loading.

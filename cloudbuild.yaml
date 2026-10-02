@@ -1,5 +1,5 @@
 # =============================================================================
-# Nearby-objects — Cloud Build pipeline
+# Nearby-Events — Cloud Build pipeline
 #
 # WHY THIS FILE EXISTS
 # --------------------
@@ -37,7 +37,7 @@ substitutions:
   _REPO: nearby-events
   _BUCKET: ''
   _AI_PROVIDER: api
-  _VERTEX_LOCATION: us-central1
+  _VERTEX_LOCATION: global  # Flash-Lite models are only served from the global endpoint
 
   # Public web config, inlined into the bundle at build time.
   _VITE_FIREBASE_API_KEY: ''

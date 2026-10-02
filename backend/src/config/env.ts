@@ -66,7 +66,7 @@ export const env = {
   geminiModel: optional('GEMINI_MODEL', 'gemini-3.5-flash-lite'),
   /** Used for one retry when the main model answers "high demand". Empty = retry the main model. */
   geminiFallbackModel: optional('GEMINI_FALLBACK_MODEL', 'gemini-3.1-flash-lite'),
-  vertexLocation: optional('VERTEX_LOCATION', 'us-central1'),
+  vertexLocation: optional('VERTEX_LOCATION', 'global'),
 
   corsOrigins: optional('CORS_ORIGINS', 'http://localhost:5173')
     .split(',')

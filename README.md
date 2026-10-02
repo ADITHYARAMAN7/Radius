@@ -9,6 +9,8 @@
 [![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+**🌐 Live on Google Cloud Run:** https://nearby-events-x2gneiue7a-el.a.run.app
+
 ---
 
 ## 📌 Overview
@@ -305,6 +307,18 @@ The seed generator (`scripts/seed-events.ts`) populates **43 community events** 
 - 🏷️ **Yard Sale**: Multi-Family Street Clearance, Flat Liquidation Moving Sale, Vintage Books & Records Swap, Plant & Seed Swap, Kids Toy Clear-out.
 - 🎓 **Amrita / Ettimadai**: GCP Study Jam and Campus Cultural Night (same day), Inter-College 3v3 Basketball, Hostel Food Stall Day, Book & Gadget Swap.
 - ⌛ **Expired Events Archive**: 8 past events to verify automatic date filtering and past event tabs.
+
+---
+
+## ☁️ Deploying & operating (Windows PowerShell)
+
+| Task | Command |
+|---|---|
+| Build and redeploy to Cloud Run (~5 min) | `.\scripts\deploy.ps1` (reads the gitignored `frontend/.env.production`) |
+| Demo morning: re-seed live board + keep one instance warm | `.\scripts\demo-day.ps1` |
+| After the demo: back to scale-to-zero | `.\scripts\demo-day.ps1 -Off` |
+
+First-time setup: [`docs/gcp-deployment.md`](docs/gcp-deployment.md). Monitoring (dashboard, log-based metrics, uptime alert): [`monitoring/`](monitoring/README.md).
 
 ---
 

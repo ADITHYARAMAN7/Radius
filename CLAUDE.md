@@ -97,9 +97,8 @@ Adhi's Flask version is a prototype; we only port ideas from it (see §6).
 - **Security (fixed Oct 3, Kanish OK):** `firestore.rules` now denies client reads of `/events`, so check-in
   codes can't be read straight from Firestore. The board stays public through the API, which only sends the
   code to the organiser.
-- Docs updated to match: README, `docs/roadmap.md`, `docs/presentation-slides.md`, `docs/demo-script.md`.
-  **Not yet reviewed:** `docs/cognizant-hackathon-report.md`, `docs/architecture*.md` may still contain old
-  claims (e.g. Gemini 1.5) — check before submitting them.
+- Docs match the deployment (Oct 3): report, current-status, architecture-diagram (+ svg), security,
+  gcp-deployment/gcp-architecture names + Vertex `global`, slides, demo script, README.
 - **Not verified by a human in the browser yet** (only API + build): see the click-through list in the PR.
 
 ---
@@ -402,3 +401,17 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   every event's `checkInCode` via the Firestore REST API. `firestore.rules`: `/events` → `allow read: if false`
   (nothing in the frontend reads Firestore; the API uses the Admin SDK). Deployed to `nearby-events-510418`;
   re-checked: direct read → PERMISSION_DENIED, site still lists 35 events, public API responses carry no codes.
+- Oct 3 (late night): **Wrap-up.** Google sign-in fix: helmet's default COOP `same-origin` broke the Firebase
+  popup ("window closed before finishing") → `same-origin-allow-popups` (deployed; Suhas to confirm in a real
+  browser). `deploy.ps1` no longer aborts on gcloud's stderr progress. **Monitoring:** dashboard "Nearby-Events -
+  live monitoring" + 7 log-based metrics (events_created, rsvps_created, poster_extractions, ai_retries,
+  ai_failures, app_errors, expiry_sweeps); definitions in `monitoring/`. **Maps key** narrowed to Maps JS +
+  Places + Place widgets (Geocoding etc. now denied; live map + Places verified) and **daily caps** set
+  (autocomplete 1,000, place details 500, text/nearby search/photos 100, map loads 2,000). **Vertex default
+  location is now `global`** in code, cloudbuild and examples (Flash-Lite isn't served in us-central1).
+  `scripts/demo-day.ps1` (re-seed live + min-instances=1; `-Off` to undo) — tested on live. Brief PDF
+  untracked + gitignored (it was committed in 7910b9b on main; the repo is private, history not rewritten).
+  Docs rewritten to reality with measured live latency (board p95 239 ms). Note: Cloud Run still mounts the
+  unused `gemini-api-key` secret (AI_PROVIDER=vertex ignores it).
+  **Left for the team:** confirm Google sign-in; merge PR #3; build the PPT from `docs/presentation-slides.md`
+  (screenshot the dashboard), record the video, email the submission; demo morning `.scriptsdemo-day.ps1`.

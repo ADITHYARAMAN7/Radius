@@ -237,7 +237,7 @@
 
       <rect y="42" width="260" height="32" rx="6" fill="#0f172a" stroke="#d97706" stroke-width="1"/>
       <text x="12" y="63" fill="#ffffff" font-size="12" font-weight="700">📂 events</text>
-      <text x="100" y="63" fill="#fef3c7" font-size="11.5">29+ active + 7 expired</text>
+      <text x="100" y="63" fill="#fef3c7" font-size="11.5">35 upcoming + 8 expired</text>
 
       <rect y="84" width="260" height="32" rx="6" fill="#0f172a" stroke="#d97706" stroke-width="1"/>
       <text x="12" y="105" fill="#ffffff" font-size="12" font-weight="700">📂 rsvps</text>
@@ -282,13 +282,13 @@
     <!-- Features -->
     <g transform="translate(20, 85)">
       <rect width="280" height="48" rx="8" fill="#0f172a" stroke="#9333ea" stroke-width="1"/>
-      <text x="12" y="22" fill="#ffffff" font-size="12" font-weight="700">✨ Gemini 2.5 Flash</text>
+      <text x="12" y="22" fill="#ffffff" font-size="12" font-weight="700">✨ Gemini 3.5 Flash-Lite</text>
       <text x="12" y="38" fill="#e9d5ff" font-size="11">Structured Schema JSON output</text>
 
       <text x="4" y="72" fill="#f3e8ff" font-size="12">• AI Event Writing Assistant</text>
       <text x="4" y="92" fill="#f3e8ff" font-size="12">• Natural Language Smart Search</text>
       <text x="4" y="112" fill="#f3e8ff" font-size="12">• Auto Category &amp; Tag Extraction</text>
-      <text x="4" y="132" fill="#f3e8ff" font-size="12">• Vertex AI IAM ADC Support</text>
+      <text x="4" y="132" fill="#f3e8ff" font-size="12">• Via Vertex AI (service account)</text>
     </g>
   </g>
 

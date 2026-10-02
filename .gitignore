@@ -154,3 +154,6 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 *-debug.log
+
+# Cognizant-confidential hackathon brief - keep locally, never commit
+docs/hackathon_brief.pdf

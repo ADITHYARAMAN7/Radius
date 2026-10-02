@@ -11,7 +11,8 @@
 - **Nearby-Events**: the neighbourhood's event board, built on Google Cloud
 - Use Case 5 — Local Event Bulletin Board
 - **Team**: Kanish, Adhi, Suhas *(add the remaining team members and mentors)*
-- **Stack**: Cloud Run · Firestore · Firebase Auth · Cloud Storage · Gemini · Google Maps Platform · React + TypeScript
+- **Stack**: Cloud Run · Firestore · Firebase Auth · Cloud Storage · Vertex AI (Gemini) · Google Maps Platform · React + TypeScript
+- **Live**: https://nearby-events-x2gneiue7a-el.a.run.app
 
 ---
 
@@ -32,7 +33,7 @@
   neighbourhood, city, optional map coordinates and image.
 - **Inputs**: the post form · **a poster photo or a forwarded WhatsApp message (Snap-a-Poster)** ·
   Google Places for the address · RSVPs from signed-in users.
-- **Sample data**: **42 realistic events** (34 upcoming, 8 past) across **15 Coimbatore neighbourhoods**,
+- **Sample data**: **43 realistic events** (35 upcoming, 8 past) across **15 Coimbatore neighbourhoods**,
   every category, including **5 events at Amrita Vishwa Vidyapeetham, Ettimadai** — dates generated relative
   to today so the board is always current.
 - Stored in **Cloud Firestore** (`events`, `events/{id}/rsvps`, `users`, `users/{uid}/attending`).
@@ -76,14 +77,16 @@
 
 ### Slide 6 — Architecture & alternatives considered
 - **Browser** (React SPA) → **Cloud Run** (Node/Express API, also serves the app) → **Firestore**,
-  **Cloud Storage**, **Gemini**; **Firebase Auth** for sign-in; **Maps JS + Places API (New)** in the browser;
-  Gemini key in **Secret Manager**; built by **Cloud Build**. *(Diagram: `docs/architecture-diagram.svg`)*
+  **Cloud Storage**, **Vertex AI (Gemini 3.5 Flash-Lite)**; **Firebase Auth** for sign-in; **Maps JS + Places API (New)**
+  in the browser; **Cloud Scheduler** runs the hourly expiry; secrets in **Secret Manager** (AI uses the service
+  account, no key); built by **Cloud Build** into **Artifact Registry**. *(Diagram: `docs/architecture-diagram.svg`)*
 - **Alternatives we weighed**:
   | Decision | Chosen | Instead of | Why |
   |---|---|---|---|
   | Compute | Cloud Run | Single Compute Engine VM (our first plan, Flask) | Scales to zero, managed HTTPS, no server upkeep |
   | Database | Firestore | SQLite on the VM / Cloud SQL | Managed, persistent across restarts, transactions for RSVPs |
   | Hosting | Cloud Run | App Engine | One container for API + app, same image locally |
+  | AI access | Vertex AI, Gemini 3.5 Flash-Lite | Gemini API key, bigger models | No key to leak; billed to the project; cheapest model, tested on all 4 AI features |
   | Maps | Google Maps Platform (+ OpenStreetMap fallback) | Geoapify, Ola Maps, Photon | Best Indian sub-locality data; part of GCP. With no key the app still shows a map (Leaflet/OSM) and finds pins via Nominatim, within its usage policy |
 - An early prototype kept events in server memory — data vanished on restart. That's why we moved to Firestore.
 
@@ -91,22 +94,27 @@
 
 ### Slide 7 — Implementation, security & monitoring
 - **Security**: Firebase ID tokens verified server-side; only the organiser can edit/delete; Firestore rules
-  block client writes to RSVP counts and status; Zod validation; rate limits; image type checked from file
+  block client writes to RSVP counts and status, and direct reads of events (keeps check-in codes private — a
+  gap we found and closed ourselves); Maps key locked to our site + daily quota caps; Zod validation; rate limits; image type checked from file
   bytes; secrets never in the build.
 - **Data quality**: Places autocomplete for addresses; neighbourhood names matched spelling-proof
   ("R.S. Puram" = "R S Puram").
-- **Monitoring**: structured JSON logs in **Cloud Logging** (request IDs, AI retries/fallbacks, extraction
-  outcomes); `/api/health` reports which integrations are live; **Cloud Run metrics dashboard, uptime check
-  and alert** *(set up at deployment)*; budget alert on the billing account.
+- **Monitoring (live)**: one **Cloud Monitoring dashboard** — requests by status, p50/p95 latency, instances,
+  uptime, events + RSVPs per hour, Gemini successes / retries / failures, server errors; **7 log-based metrics**
+  from our structured JSON logs; **uptime check** on `/api/health` every 5 min with an **email alert**;
+  budget alert. *(Screenshot the dashboard for this slide.)*
 - **Testing**: 185 automated checks against the Firestore emulator (134 service, 18 recommendation scoring,
   33 trending) + a scripted API regression (sign-in, create, RSVP, cancel, delete, check-in, Q&A, AI)
-  before every release. **Zero-config local mode** lets any teammate run the whole app with one command.
+  before every release; **live smoke test on Cloud Run 16/16**. **Zero-config local mode** lets any teammate
+  run the whole app with one command; `scripts/deploy.ps1` redeploys in ~5 minutes.
 
 ---
 
 ### Slide 8 — KPIs (targets)
 - **Time to post an event**: under 1 minute with Snap-a-Poster *(target)*.
 - **Stale events on the board**: 0 — enforced by the query, not by hand *(by design)*.
+- **Board API response time**: **p95 239 ms, median 205 ms** *(measured on the live site)*; target < 500 ms.
+- **Uptime**: target 99.5 %, watched by the uptime check.
 - **Events with a map pin**: > 90 % once Places autocomplete is used *(target)*.
 - **Engagement**: RSVPs per event; share-link opens; weekly active organisers *(to be measured)*.
 - **AI reliability**: % of Snap-a-Poster reads that succeed, and fallback-model rate (from logs).
@@ -119,7 +127,7 @@
 | Spam or inappropriate posts | Sign-in required to post; rate limits; **moderation/reporting is the next item** |
 | AI misreads a poster | Organiser reviews every field; warnings shown; nothing auto-posted |
 | Gemini overloaded | Timeout + fallback model; manual form always works |
-| Cost overrun | GCP free trial (no auto-upgrade), budget alert, daily quota caps on Maps APIs |
+| Cost overrun | GCP free trial (no auto-upgrade), $25 budget alert, daily quota caps on Maps APIs, cheapest Gemini model, scale to zero |
 | Wrong locality names | Places autocomplete + spelling-proof matching |
 - **Adoption & change management**: seed the board through colleges, RWAs and clubs; Snap-a-Poster lets them
   move existing posters/WhatsApp messages onto the board in seconds; installable on phones without an app store;

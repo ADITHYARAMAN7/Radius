@@ -1,4 +1,4 @@
-# Deploying Nearby-objects to Google Cloud
+# Deploying Nearby-Events to Google Cloud
 
 > A runbook. Every command is copy-pasteable; set the variables in step 0 and the rest
 > follow. Allow about 30 minutes end to end, most of it waiting for API enablement and
@@ -19,10 +19,10 @@
 Set these once in the shell you will use throughout.
 
 ```bash
-export PROJECT_ID="nearby-objects-$(date +%s | tail -c 5)"   # must be globally unique
+export PROJECT_ID="nearby-events-$(date +%s | tail -c 5)"   # must be globally unique
 export REGION="asia-south1"                                   # Mumbai; use your nearest
-export SERVICE="nearby-objects"
-export REPO="nearby-objects"
+export SERVICE="nearby-events"
+export REPO="nearby-events"
 export BUCKET="${PROJECT_ID}-event-images"
 
 echo "Project: $PROJECT_ID   Region: $REGION"
@@ -30,7 +30,7 @@ echo "Project: $PROJECT_ID   Region: $REGION"
 
 > **Region advice:** keep Cloud Run, Firestore and Cloud Storage in the **same region** —
 > cross-region reads add latency to every request. Vertex AI is the exception: it is not
-> available everywhere, so it has its own `VERTEX_LOCATION` (default `us-central1`).
+> available everywhere, so it has its own `VERTEX_LOCATION` (default `global` — the Flash-Lite models are only served there; `us-central1` and `asia-south1` return errors for them).
 
 ---
 
@@ -40,7 +40,7 @@ echo "Project: $PROJECT_ID   Region: $REGION"
 gcloud auth login
 
 # New project:
-gcloud projects create "$PROJECT_ID" --name="Nearby-objects"
+gcloud projects create "$PROJECT_ID" --name="Nearby-Events"
 
 # Or use an existing one:
 # export PROJECT_ID=your-existing-project
@@ -93,7 +93,7 @@ gcloud storage buckets add-iam-policy-binding "gs://$BUCKET" \
   --member=allUsers --role=roles/storage.objectViewer
 
 gcloud iam service-accounts create "${SERVICE}-run" \
-  --display-name="Nearby-objects Cloud Run runtime"
+  --display-name="Nearby-Events Cloud Run runtime"
 
 for ROLE in roles/datastore.user roles/storage.objectAdmin \
             roles/secretmanager.secretAccessor roles/logging.logWriter \
@@ -273,7 +273,7 @@ No key exists anywhere; the Cloud Run service account authenticates.
 gcloud services enable aiplatform.googleapis.com
 # roles/aiplatform.user was granted by the setup script
 export AI_PROVIDER=vertex
-export VERTEX_LOCATION=us-central1
+export VERTEX_LOCATION=global
 ```
 
 Either way the AI features are optional — the app runs with them switched off.
@@ -302,7 +302,7 @@ _SERVICE=${SERVICE},\
 _REPO=${REPO},\
 _BUCKET=${BUCKET},\
 _AI_PROVIDER=${AI_PROVIDER:-api},\
-_VERTEX_LOCATION=${VERTEX_LOCATION:-us-central1},\
+_VERTEX_LOCATION=${VERTEX_LOCATION:-global},\
 _VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY},\
 _VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN},\
 _VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID},\
@@ -360,7 +360,7 @@ gcloud run deploy "$SERVICE" \
   --service-account="${SERVICE}-run@${PROJECT_ID}.iam.gserviceaccount.com" \
   --memory=512Mi --cpu=1 \
   --min-instances=0 --max-instances=10 --timeout=60s \
-  --set-env-vars="NODE_ENV=production,TZ=Asia/Kolkata,SERVE_STATIC=true,GCP_PROJECT_ID=${PROJECT_ID},GCS_BUCKET=${BUCKET},AI_PROVIDER=${AI_PROVIDER:-api},VERTEX_LOCATION=${VERTEX_LOCATION:-us-central1}" \
+  --set-env-vars="NODE_ENV=production,TZ=Asia/Kolkata,SERVE_STATIC=true,GCP_PROJECT_ID=${PROJECT_ID},GCS_BUCKET=${BUCKET},AI_PROVIDER=${AI_PROVIDER:-api},VERTEX_LOCATION=${VERTEX_LOCATION:-global}" \
   --set-secrets="GEMINI_API_KEY=gemini-api-key:latest,MAINTENANCE_TOKEN=maintenance-token:latest"
 ```
 

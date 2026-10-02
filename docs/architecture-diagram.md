@@ -1,186 +1,121 @@
-# Nearby-events System Architecture Diagram
+# Nearby-Events — System Architecture Diagram
 
-> **Cognizant Google Cloud Hackathon Project**  
-> *Discover. Connect. Participate. — A Location-Aware Community Event & Experience Platform*
+> As deployed on Google Cloud (project `nearby-events-510418`, region `asia-south1`).
+> Live: https://nearby-events-x2gneiue7a-el.a.run.app · Vector version for slides: [`architecture-diagram.svg`](architecture-diagram.svg)
 
 ---
 
-## 1. High-Level Architecture Flow
+## 1. High-level flow
 
 ```
-                                  +-----------------------+
-                                  |         USER          |
-                                  |  (Browser / Mobile)   |
-                                  +-----------+-----------+
-                                              |
-                                              | HTTPS / Web
-                                              v
-                                  +-----------------------+           +-----------------------+
-                                  |  React + TypeScript   | --------> | Firebase Auth Service |
-                                  |     Vite Frontend     | <-------- |  (Google / Email JWT) |
-                                  +-----------+-----------+           +-----------------------+
-                                              |
-                                              | REST API (/api/*) + JWT Bearer
-                                              v
-                                  +-----------------------+           +-----------------------+
-                                  |    Google Cloud Run   | --------> |     Cloud Logging     |
-                                  |  (Express API Engine) |           |  (Audit & Telemetry)  |
-                                  +-----------+-----------+           +-----------------------+
-                                              |
-            +---------------------------------+---------------------------------+
-            |                                 |                                 |
-            v                                 v                                 v
-+-----------------------+         +-----------------------+         +-----------------------+
-|    Cloud Firestore    |         |     Cloud Storage     |         |   Gemini / Vertex AI  |
-|  (Serverless NoSQL)   |         |    (Images Bucket)    |         |   (GenAI Assistant)   |
-|                       |         |                       |         |                       |
-|  * users/             |         |  * events/{uid}/*     |         |  * Structured JSON    |
-|  * events/            |         |  * Magic-byte Check   |         |  * Event Assistant    |
-|  * rsvps/             |         |  * 5 MB Max Upload    |         |  * Smart Search       |
-+-----------------------+         +-----------------------+         +-----------------------+
-            |
-            +---------------------------------+
-                                              |
-                                              v
-                                  +-----------------------+
-                                  |  Google Maps Platform |
-                                  | (Location & Geocoding)|
-                                  |                       |
-                                  |  * Interactive Pins   |
-                                  |  * Distance Radius    |
-                                  |  * Venue Navigation   |
-                                  +-----------------------+
+                        +--------------------------+
+                        |   Resident / organiser   |
+                        |  (browser, installable)  |
+                        +------------+-------------+
+                                     | HTTPS
+                                     v
+ +-------------------+     +--------------------------+     +-----------------------------+
+ |  Firebase Auth    |<--->|  React + TypeScript SPA  |---->| Google Maps JS + Places (New)|
+ | email / Google    |     |  (served by Cloud Run)   |     | key locked to our site      |
+ +-------------------+     +------------+-------------+     +-----------------------------+
+          ID token  ------------------> | REST /api/*  (Bearer ID token)
+                                        v
+                        +--------------------------------+        +----------------------+
+ Cloud Scheduler ------>|  Cloud Run  "nearby-events"    |------->|  Cloud Logging       |
+ hourly: POST           |  Node 20 + Express, 0-10 inst. |        |  + Monitoring        |
+ /api/maintenance/expire|  helmet, Zod, rate limits      |        |  dashboard, uptime,  |
+                        +---+------------+------------+--+        |  log metrics, alert  |
+                            |            |            |           +----------------------+
+                            v            v            v
+               +-------------+  +-------------+  +------------------------------+
+               |  Firestore  |  |   Cloud     |  |  Vertex AI (global)          |
+               |  (Native)   |  |   Storage   |  |  Gemini 3.5 Flash-Lite       |
+               |  events     |  |  event      |  |  fallback 3.1 Flash-Lite     |
+               |   /rsvps    |  |  images     |  |  -> built-in rules           |
+               |   /comments |  +-------------+  +------------------------------+
+               |  users      |
+               |   /attending, /saved            Secret Manager: maintenance token
+               +-------------+
+
+ Build: scripts/deploy.ps1 -> Cloud Build -> Artifact Registry -> Cloud Run
+ Outside GCP, no key: Open-Meteo (event-day weather), OpenStreetMap (fallback map, geocoding, suggestions)
 ```
 
 ---
 
-## 2. Interactive Mermaid Diagram
+## 2. Mermaid diagram
 
 ```mermaid
 graph TD
-    %% User and Identity
-    User(["👤 Community User\n(Web & Mobile Browser)"])
-    Auth["🔐 Firebase Authentication\n(Email & Google OAuth 2.0)"]
+    User(["Resident / organiser<br/>browser or installed PWA"])
+    Auth["Firebase Authentication<br/>email + Google"]
+    Maps["Google Maps JS + Places API (New)<br/>key restricted by site + API, daily caps"]
 
-    %% Client Tier
-    subgraph ClientTier ["🖥️ Presentation Layer (React + Vite + TypeScript)"]
-        SPA["⚛️ React Single Page App\n* Explore Feed & Dynamic Chips\n* Interactive Event Map\n* Instant RSVP Engine\n* Event Creation Form"]
+    subgraph Client ["Browser"]
+        SPA["React 18 + TypeScript SPA<br/>board, map, calendar, post form, Snap-a-Poster"]
     end
 
-    %% Compute Tier
-    subgraph ComputeTier ["☁️ Compute Layer (Google Cloud Run)"]
-        CloudRun["🚀 Cloud Run Serverless Container\n(Node.js 20 + Express API Engine)"]
-        
-        subgraph Middlewares ["Security & Middleware"]
-            AuthGuard["🛡️ JWT Auth Guard"]
-            RateLimit["⏱️ Request Throttling & Helmet"]
-            Validation["✅ Zod Schema Validator"]
-        end
-
-        subgraph CoreServices ["Application Microservices"]
-            EventSvc["📅 Event Service\n(CRUD, Composite Search, Expiry)"]
-            RsvpSvc["🎟️ RSVP Transaction Engine\n(Atomic Writes & Counters)"]
-            UploadSvc["🖼️ Storage Upload Pipeline\n(Magic-Byte MIME Check)"]
-            AiSvc["✨ AI Dispatcher\n(Gemini 2.5 Flash GenAI)"]
-        end
+    subgraph Run ["Cloud Run: nearby-events (asia-south1)"]
+        API["Node 20 + Express API<br/>also serves the SPA"]
+        MW["ID-token check, Zod validation,<br/>rate limits, helmet"]
+        SVC["Services: events, RSVP transactions,<br/>check-in, Q&A, recommendations, uploads, AI"]
     end
 
-    %% Storage & Database Tier
-    subgraph DataTier ["🗄️ Google Cloud Data & Intelligence Tier"]
-        Firestore[("🔥 Cloud Firestore\n(NoSQL Document Database)")]
-        
-        subgraph Collections ["Firestore Collections"]
-            ColUsers["📂 users\n(Profiles & /attending mirrors)"]
-            ColEvents["📂 events\n(Active, Expired & Seeded Events)"]
-            ColRsvps["📂 rsvps\n(Event RSVP subcollections)"]
-        end
-
-        GCS["📦 Cloud Storage (GCS)\n* events/{uid}/... Prefix Isolation\n* Public CDN HTTPS Delivery\n* Cascade Cleanup on Delete"]
-        
-        Gemini["🧠 Google Gemini / Vertex AI\n* Gemini 2.5 Flash Model\n* Structured JSON Schema Assistant\n* Smart Natural Language Search"]
-        
-        Maps["📍 Google Maps Platform\n* Maps JavaScript API\n* Geocoding & Radius Filtering\n* OpenStreetMap Fallback Mode"]
-        
-        Logging["📊 Cloud Logging & Monitoring\n* Structured JSON Logging\n* Error Telemetry & Tracing"]
+    subgraph Data ["Data and AI"]
+        FS[("Cloud Firestore<br/>events, rsvps, comments, users")]
+        GCS["Cloud Storage<br/>event images"]
+        AI["Vertex AI (global)<br/>Gemini 3.5 Flash-Lite, fallback 3.1 Flash-Lite"]
     end
 
-    %% Relationships & Data Flow
-    User -->|HTTPS Traffic| SPA
-    SPA -->|Get ID Token| Auth
-    SPA -->|Authorized API Requests| CloudRun
-    
-    CloudRun --> Middlewares
-    Middlewares --> CoreServices
-    
-    EventSvc -->|Read / Write| ColEvents
-    RsvpSvc -->|Atomic Transactions| ColRsvps
-    RsvpSvc -->|Mirror Update| ColUsers
-    Firestore --- ColUsers
-    Firestore --- ColEvents
-    Firestore --- ColRsvps
+    subgraph Ops ["Operations"]
+        SCH["Cloud Scheduler<br/>hourly expiry"]
+        SM["Secret Manager"]
+        LOG["Cloud Logging + Monitoring<br/>dashboard, log metrics, uptime alert"]
+        CB["Cloud Build + Artifact Registry"]
+    end
 
-    UploadSvc -->|Signed Stream| GCS
-    AiSvc -->|Structured Prompting| Gemini
-    SPA -.->|Render Pins| Maps
-    CloudRun -->|Async Audit Stream| Logging
-
-    %% Styling
-    classDef client fill:#1e3a8a,stroke:#3b82f6,stroke-width:2px,color:#fff;
-    classDef compute fill:#0369a1,stroke:#0ea5e9,stroke-width:2px,color:#fff;
-    classDef data fill:#d97706,stroke:#f59e0b,stroke-width:2px,color:#fff;
-    classDef ai fill:#7c3aed,stroke:#a855f7,stroke-width:2px,color:#fff;
-    classDef maps fill:#059669,stroke:#10b981,stroke-width:2px,color:#fff;
-    classDef auth fill:#ea580c,stroke:#f97316,stroke-width:2px,color:#fff;
-
-    class SPA client;
-    class CloudRun,AuthGuard,RateLimit,Validation,EventSvc,RsvpSvc,UploadSvc,AiSvc compute;
-    class Firestore,ColUsers,ColEvents,ColRsvps,GCS,Logging data;
-    class Gemini ai;
-    class Maps maps;
-    class Auth auth;
+    User --> SPA
+    SPA -->|sign in| Auth
+    SPA -->|map, autocomplete| Maps
+    SPA -->|/api/* + ID token| API
+    API --> MW --> SVC
+    SVC --> FS
+    SVC --> GCS
+    SVC -->|structured output| AI
+    SCH -->|POST /api/maintenance/expire| API
+    SM -.->|runtime secret| API
+    API -.->|JSON logs| LOG
+    CB -.->|image| Run
 ```
 
 ---
 
-## 3. Google Cloud Component Breakdown
+## 3. Components
 
-| GCP Component | Role in Nearby-events | Key Architectural Feature |
+| Component | Role | Notes |
 |---|---|---|
-| **Google Cloud Run** | Serverless Backend & SPA Host | Autoscaling 0 to N instances, sub-second boot, single container deployment. |
-| **Cloud Firestore** | Primary NoSQL Document Database | Atomic transactions for RSVPs, composite indexes for rapid filtering, subcollections for scalability. |
-| **Cloud Storage (GCS)** | Event Imagery Object Store | User-isolated prefixes (`events/{uid}/...`), magic-byte validation, 5MB ceiling. |
-| **Gemini / Vertex AI** | Generative AI & Semantic Assistant | `@google/genai` structured JSON schema generation for event drafts and smart search intent. |
-| **Google Maps Platform** | Location & Neighborhood Visualization | Map pin rendering, distance calculation (Haversine formula), directions navigation. |
-| **Firebase Auth** | Identity & Access Management | Google Sign-in and Email/Password with JWT validation via Firebase Admin SDK. |
-| **Cloud Logging** | Observability & Audit Trail | Structured JSON logs with request correlation IDs and health check monitoring. |
+| **Cloud Run** | API + serves the app | One container, scales 0–10, `TZ=Asia/Kolkata`, startup CPU boost |
+| **Cloud Firestore** | Events, RSVPs, Q&A, profiles | RSVP counts change only inside transactions; rules deny client writes to counts/status/owner and deny direct reads of events (check-in codes) |
+| **Cloud Storage** | Event images | Per-user paths `events/{uid}/…`, type checked from file bytes, 5 MB cap |
+| **Vertex AI** | Snap-a-Poster, AI assist, AI search | Service-account auth, no key; 12 s timeout, one retry on the fallback model, then built-in rules (not for Snap-a-Poster) |
+| **Firebase Auth** | Sign-in | Email/password and Google; the API verifies ID tokens |
+| **Google Maps Platform** | Map, Places autocomplete | Key restricted to our URLs and to Maps JS / Places / Place widgets; daily quota caps |
+| **Cloud Scheduler** | Expiry | Hourly call with a secret header marks ended events `EXPIRED` |
+| **Secret Manager** | Secrets | Injected at runtime, never in the image or build args |
+| **Cloud Logging + Monitoring** | Observability | Dashboard, 7 log-based metrics, uptime check on `/api/health` with email alert — see [`monitoring/`](../monitoring/README.md) |
+| **Cloud Build + Artifact Registry** | Delivery | `scripts/deploy.ps1` → build → push → deploy (~5 min) |
 
 ---
 
-## 4. Presentation Graphic Asset
-
-A vector SVG diagram is available for slide decks and submission materials:
-
-👉 **[Download / View Presentation SVG (`docs/architecture-diagram.svg`)](file:///c:/Users/kanis/OneDrive/Desktop/Cognizant%20hackhathon/Hackhathon/docs/architecture-diagram.svg)**
-
----
-
-## 5. Security & Isolation Model
+## 4. Security boundaries
 
 ```
-+--------------------------------------------------------------------------+
-|                            SECURITY BOUNDARIES                           |
-+--------------------------------------------------------------------------+
-| 1. Client Security:                                                      |
-|    - No secrets in frontend bundle (VITE_ variables are public only).    |
-|    - All sensitive writes require Authorization Bearer <Firebase ID Token>|
-|                                                                          |
-| 2. API Security:                                                         |
-|    - Magic-byte image inspection prevents malicious file uploads.        |
-|    - Ownership verification ensures creators only edit/delete own data.  |
-|    - HTML output sanitization and https:// URL enforcement for images.   |
-|                                                                          |
-| 3. Data Consistency:                                                     |
-|    - RSVP count is protected by server-side Firestore Transactions.      |
-|    - Cascading delete cleans event documents, RSVPs, and GCS images.     |
-+--------------------------------------------------------------------------+
+1. Browser:  only public values in the bundle (Firebase web config, site-restricted Maps key).
+             Every write sends a Firebase ID token.
+2. API:      verifies the token; only the organiser edits/deletes; Zod on every input;
+             rate limits (240 reads / 40 writes per minute per IP, 12 AI calls per minute per user);
+             image type from magic bytes; check-in code returned only to the organiser.
+3. Database: Firestore rules as a second line: no client reads of events, no client writes to
+             rsvpCount / status / creatorId, RSVP id = caller's uid (no duplicates).
+4. Cloud:    secrets in Secret Manager; AI via service account; budget alert; Maps quota caps.
 ```

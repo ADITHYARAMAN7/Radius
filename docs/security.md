@@ -1,4 +1,4 @@
-# Security Review — Nearby-objects
+# Security Review — Nearby-Events
 
 > **Review date:** October 2026  
 > **Scope:** Full stack — Express/Node backend, React/Vite frontend, Firestore, Cloud Storage  
@@ -110,7 +110,7 @@ All application writes go through the Cloud Run API, which uses a **service acco
 |------------|------|--------|--------|--------|
 | `users/{uid}` | Public | Owner only; `uid` field must match doc key | Owner only; `uid` immutable | Denied |
 | `users/{uid}/attending/{eventId}` | Owner only | Denied (API only) | Denied (API only) | Denied (API only) |
-| `events/{eventId}` | Public | Authenticated; `creatorId` = caller; `rsvpCount = 0`; `status = 'ACTIVE'`; title/desc/category validated | Owner only; `creatorId`, `rsvpCount`, **and `status`** locked | Owner only |
+| `events/{eventId}` | **Denied** — the board is served through the API, which hides `checkInCode` from everyone but the organiser | Authenticated; `creatorId` = caller; `rsvpCount = 0`; `status = 'ACTIVE'`; title/desc/category validated | Owner only; `creatorId`, `rsvpCount`, **and `status`** locked | Owner only |
 | `events/{eventId}/rsvps/{uid}` | Public | `uid` = caller; document data `uid` field must match | Denied | Owner only |
 | Everything else | Denied | Denied | Denied | Denied |
 
@@ -502,6 +502,7 @@ The `user.uid` here comes from the verified Firebase ID token — it is not a qu
 | V6 | **Low** | `index.ts` | Global `express.json` limit was 1 MB — unnecessarily generous for routes that need ≤ 4 KB | Global limit reduced to 64 KB; AI router gets a separate 128 KB limit |
 | V7 | **Low** | `middleware/requestContext.ts` | Health check path skip used `/api/health` but `req.path` inside a mounted router has the mount prefix stripped, so the condition never matched | Path guard corrected to `/health` with `req.originalUrl` as fallback |
 | V8 | **Low** | `firestore.rules` | The event `update` rule did not lock the `status` field — a client using the Firebase SDK directly could flip a CANCELLED event back to ACTIVE | `request.resource.data.status == resource.data.status` added to the update condition |
+| V9 | **Medium** | `firestore.rules` | Event documents were publicly readable and hold `checkInCode`, so anyone with the public web config could read every check-in code through the Firestore REST API (confirmed on the live project) and check in without attending | `/events` now `allow read: if false` — nothing in the frontend reads Firestore directly; verified PERMISSION_DENIED on the live database |
 
 ---
 
