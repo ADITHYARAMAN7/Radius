@@ -1,0 +1,32 @@
+# Keeps the Cloud Build upload small and avoids shipping anything sensitive.
+# Without this, node_modules alone makes the build context hundreds of MB.
+
+.git
+.gitignore
+
+**/node_modules
+**/dist
+**/build
+**/.vite
+
+# Never upload credentials or local env files.
+**/.env
+**/.env.local
+**/.env.*.local
+!**/.env.example
+**/service-account*.json
+**/gcp-key*.json
+**/credentials.json
+
+**/*.log
+**/.firebase
+**/coverage
+**/.vscode
+**/.idea
+**/.DS_Store
+**/Thumbs.db
+
+# Docs are not needed to build the image.
+docs/
+*.md
+!README.md

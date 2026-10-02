@@ -1,0 +1,54 @@
+# Local run of the production image, with the Firestore emulator alongside.
+#
+# This is for checking the container itself behaves. Day-to-day development is
+# faster with `npm run dev` at the repo root, which gives hot reload.
+#
+#   docker compose -f docker/docker-compose.yml up --build
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        # Point these at your Firebase project to exercise sign-in in the container.
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
+        VITE_FIREBASE_STORAGE_BUCKET: ${VITE_FIREBASE_STORAGE_BUCKET:-}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID:-}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-}
+        VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:-}
+    ports:
+      - '8080:8080'
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      SERVE_STATIC: 'true'
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-nearby-objects-local}
+      # Talk to the emulator in the sibling container rather than real Firestore.
+      FIRESTORE_EMULATOR_HOST: firestore:8081
+      MAINTENANCE_TOKEN: ${MAINTENANCE_TOKEN:-local-dev-token}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GCS_BUCKET: ${GCS_BUCKET:-}
+      CORS_ORIGINS: http://localhost:8080
+    depends_on:
+      - firestore
+
+  firestore:
+    image: node:20-alpine
+    working_dir: /work
+    # openjdk is required: the Firestore emulator is a Java process.
+    command: >
+      sh -c "apk add --no-cache openjdk17-jre-headless &&
+             npm i -g firebase-tools@13 &&
+             firebase emulators:start --only firestore
+               --project ${GCP_PROJECT_ID:-nearby-objects-local}"
+    environment:
+      FIREBASE_EMULATORS_PATH: /work/.cache
+    ports:
+      - '8081:8081'
+    volumes:
+      - firestore-cache:/work/.cache
+
+volumes:
+  firestore-cache:

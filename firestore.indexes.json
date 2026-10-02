@@ -1,0 +1,103 @@
+{
+  "//": [
+    "Composite indexes Nearby-objects needs. Firestore creates single-field indexes",
+    "automatically; these are the multi-field combinations the Explore query builds.",
+    "",
+    "The query pipeline pushes `status` plus ONE equality filter (whichever of category,",
+    "neighborhood or city is set, in that order of preference) plus the startsAt range to",
+    "Firestore, then finishes filtering in memory. That design is what keeps this list",
+    "short -- see docs/architecture.md.",
+    "",
+    "Deploy with:  firebase deploy --only firestore:indexes"
+  ],
+  "indexes": [
+    {
+      "//": "Default Explore feed: active events from now on, soonest first.",
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "startsAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Category filter, and the related-events strip on an event page.",
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "category", "order": "ASCENDING" },
+        { "fieldPath": "startsAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Neighbourhood filter. Lowercased field so matching is case-insensitive.",
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "neighborhoodLower", "order": "ASCENDING" },
+        { "fieldPath": "startsAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "City filter, for 'search by neighbourhood/city'.",
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "cityLower", "order": "ASCENDING" },
+        { "fieldPath": "startsAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "The expiration sweep: active events whose end time has passed.",
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "endsAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "'Events I created', newest first, including past and cancelled ones.",
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "creatorId", "order": "ASCENDING" },
+        { "fieldPath": "startsAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Idempotent re-seeding looks up a seeded event by title.",
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "seedTag", "order": "ASCENDING" },
+        { "fieldPath": "title", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "//": [
+        "Long free text is never queried directly -- search runs over searchKeywords and",
+        "an in-memory relevance pass -- so indexing these only costs write latency and",
+        "storage. Exempting them is a real saving on a write-heavy collection."
+      ],
+      "collectionGroup": "events",
+      "fieldPath": "description",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "events",
+      "fieldPath": "summary",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "events",
+      "fieldPath": "address",
+      "indexes": []
+    }
+  ]
+}

@@ -1,0 +1,347 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 920" width="100%" height="100%" style="background:#0b0f19; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <!-- Background Gradients -->
+    <radialGradient id="bg-glow" cx="50%" cy="20%" r="70%">
+      <stop offset="0%" stop-color="#1e293b" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#0b0f19" stop-opacity="1"/>
+    </radialGradient>
+
+    <!-- Card Gradients -->
+    <linearGradient id="client-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+
+    <linearGradient id="compute-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0369a1"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+
+    <linearGradient id="db-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d97706"/>
+      <stop offset="100%" stop-color="#1c1917"/>
+    </linearGradient>
+
+    <linearGradient id="storage-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+
+    <linearGradient id="ai-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+
+    <linearGradient id="maps-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#064e3b"/>
+    </linearGradient>
+
+    <linearGradient id="auth-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ea580c"/>
+      <stop offset="100%" stop-color="#431407"/>
+    </linearGradient>
+
+    <linearGradient id="ops-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+
+    <!-- Drop Shadows -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+
+    <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <!-- Arrow Markers -->
+    <marker id="arrow-cyan" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#38bdf8"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#fbbf24"/>
+    </marker>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#c084fc"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#34d399"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#fb923c"/>
+    </marker>
+    <marker id="arrow-slate" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="1400" height="920" fill="url(#bg-glow)"/>
+
+  <!-- Grid lines for subtle tech backdrop -->
+  <g opacity="0.07" stroke="#94a3b8" stroke-width="1">
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none"/>
+    </pattern>
+    <rect width="1400" height="920" fill="url(#grid)"/>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- HEADER -->
+  <!-- ========================================================================= -->
+  <g transform="translate(60, 40)">
+    <!-- GCP Badge -->
+    <rect x="0" y="0" width="220" height="28" rx="14" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+    <circle cx="14" cy="14" r="5" fill="#38bdf8"/>
+    <text x="28" y="19" fill="#e2e8f0" font-size="12" font-weight="700" letter-spacing="0.5">GOOGLE CLOUD PLATFORM</text>
+
+    <!-- Main Title -->
+    <text x="0" y="65" fill="#ffffff" font-size="28" font-weight="800" letter-spacing="-0.5">
+      Nearby-events <tspan fill="#38bdf8">System Architecture</tspan>
+    </text>
+    <text x="0" y="90" fill="#94a3b8" font-size="14" font-weight="400">
+      Location-Aware Community Experience &amp; Event Platform • Cognizant GCP Hackathon
+    </text>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- LAYER 1: CLIENT TIER (USER & FRONTEND) -->
+  <!-- ========================================================================= -->
+  
+  <!-- USER NODE -->
+  <g transform="translate(60, 170)" filter="url(#shadow)">
+    <rect width="220" height="150" rx="16" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+    <circle cx="110" cy="50" r="24" fill="#334155" stroke="#94a3b8" stroke-width="1.5"/>
+    <!-- User Icon -->
+    <path d="M 110 42 A 7 7 0 1 0 110 56 A 7 7 0 1 0 110 42 Z M 98 64 C 98 58 103 56 110 56 C 117 56 122 58 122 64 Z" fill="#38bdf8"/>
+    <text x="110" y="95" fill="#ffffff" font-size="16" font-weight="700" text-anchor="middle">Community User</text>
+    <text x="110" y="115" fill="#94a3b8" font-size="12" text-anchor="middle">Browser / Mobile Web</text>
+  </g>
+
+  <!-- FRONTEND NODE (React + Vite + TypeScript + Tailwind) -->
+  <g transform="translate(360, 170)" filter="url(#shadow)">
+    <rect width="360" height="150" rx="16" fill="url(#client-grad)" stroke="#3b82f6" stroke-width="2"/>
+    <rect x="20" y="20" width="36" height="36" rx="8" fill="#1d4ed8"/>
+    <!-- React Atom Icon -->
+    <ellipse cx="38" cy="38" rx="11" ry="4" fill="none" stroke="#60a5fa" stroke-width="1.5" transform="rotate(30 38 38)"/>
+    <ellipse cx="38" cy="38" rx="11" ry="4" fill="none" stroke="#60a5fa" stroke-width="1.5" transform="rotate(90 38 38)"/>
+    <ellipse cx="38" cy="38" rx="11" ry="4" fill="none" stroke="#60a5fa" stroke-width="1.5" transform="rotate(150 38 38)"/>
+    <circle cx="38" cy="38" r="2" fill="#ffffff"/>
+
+    <text x="70" y="38" fill="#ffffff" font-size="18" font-weight="700">React + TypeScript SPA</text>
+    <text x="70" y="56" fill="#93c5fd" font-size="12" font-weight="500">Vite • TailwindCSS • Responsive UI</text>
+
+    <!-- Feature Pills -->
+    <rect x="20" y="75" width="95" height="24" rx="6" fill="#1e293b" stroke="#3b82f6" stroke-width="1"/>
+    <text x="67" y="91" fill="#e2e8f0" font-size="11" text-anchor="middle">Explore &amp; Filter</text>
+
+    <rect x="125" y="75" width="105" height="24" rx="6" fill="#1e293b" stroke="#3b82f6" stroke-width="1"/>
+    <text x="177" y="91" fill="#e2e8f0" font-size="11" text-anchor="middle">Instant RSVP Flow</text>
+
+    <rect x="240" y="75" width="100" height="24" rx="6" fill="#1e293b" stroke="#3b82f6" stroke-width="1"/>
+    <text x="290" y="91" fill="#e2e8f0" font-size="11" text-anchor="middle">Event Creation</text>
+
+    <!-- Subtext -->
+    <text x="20" y="125" fill="#cbd5e1" font-size="11.5">Single Page App hosted &amp; served via Cloud Run</text>
+  </g>
+
+  <!-- FIREBASE AUTHENTICATION (Side Integration) -->
+  <g transform="translate(800, 170)" filter="url(#shadow)">
+    <rect width="260" height="150" rx="16" fill="url(#auth-grad)" stroke="#f97316" stroke-width="2"/>
+    <rect x="20" y="20" width="36" height="36" rx="8" fill="#c2410c"/>
+    <!-- Lock / Key Icon -->
+    <path d="M 38 28 A 5 5 0 0 0 33 33 L 33 36 L 43 36 L 43 33 A 5 5 0 0 0 38 28 Z M 30 36 L 46 36 L 46 48 L 30 48 Z" fill="#fed7aa"/>
+    <text x="68" y="38" fill="#ffffff" font-size="16" font-weight="700">Firebase Auth</text>
+    <text x="68" y="56" fill="#fdba74" font-size="12">Identity &amp; Tokens</text>
+
+    <text x="20" y="90" fill="#ffedd5" font-size="12">• Email &amp; Password Sign-in</text>
+    <text x="20" y="110" fill="#ffedd5" font-size="12">• Google OAuth 2.0 Identity</text>
+    <text x="20" y="130" fill="#ffedd5" font-size="12">• Verified JWT Bearer Tokens</text>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- LAYER 2: COMPUTE & API GATEWAY (CLOUD RUN) -->
+  <!-- ========================================================================= -->
+  <g transform="translate(360, 390)" filter="url(#shadow)">
+    <!-- Outer Cloud Run Box -->
+    <rect width="700" height="160" rx="18" fill="url(#compute-grad)" stroke="#0ea5e9" stroke-width="2.5"/>
+    
+    <!-- Header Banner -->
+    <rect x="20" y="20" width="40" height="40" rx="10" fill="#0284c7"/>
+    <!-- Cloud Run Container Icon -->
+    <path d="M 32 30 L 48 30 L 52 40 L 48 50 L 32 50 L 28 40 Z" fill="none" stroke="#ffffff" stroke-width="2"/>
+    <circle cx="40" cy="40" r="3" fill="#ffffff"/>
+
+    <text x="72" y="38" fill="#ffffff" font-size="20" font-weight="800">Google Cloud Run</text>
+    <text x="72" y="56" fill="#7dd3fc" font-size="13" font-weight="600">Fully Managed Serverless Container (Node.js 20 + Express)</text>
+
+    <!-- Internal Architecture Microservices / Routes -->
+    <g transform="translate(20, 80)">
+      <!-- Box 1: Auth & Request Middleware -->
+      <rect x="0" y="0" width="150" height="60" rx="8" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2"/>
+      <text x="75" y="24" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">Security &amp; Auth</text>
+      <text x="75" y="44" fill="#94a3b8" font-size="10.5" text-anchor="middle">JWT Verification • CORS</text>
+
+      <!-- Box 2: Event Core API -->
+      <rect x="165" y="0" width="160" height="60" rx="8" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2"/>
+      <text x="245" y="24" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">Event Services</text>
+      <text x="245" y="44" fill="#94a3b8" font-size="10.5" text-anchor="middle">CRUD • RSVP Engine • Search</text>
+
+      <!-- Box 3: Storage & Uploads -->
+      <rect x="340" y="0" width="150" height="60" rx="8" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2"/>
+      <text x="415" y="24" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">Upload Pipeline</text>
+      <text x="415" y="44" fill="#94a3b8" font-size="10.5" text-anchor="middle">Magic-byte Checks • 5MB</text>
+
+      <!-- Box 4: AI Dispatcher -->
+      <rect x="505" y="0" width="155" height="60" rx="8" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2"/>
+      <text x="582" y="24" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">AI Dispatcher</text>
+      <text x="582" y="44" fill="#94a3b8" font-size="10.5" text-anchor="middle">Gemini Structured Prompt</text>
+    </g>
+  </g>
+
+  <!-- CLOUD LOGGING (Observability) -->
+  <g transform="translate(1120, 390)" filter="url(#shadow)">
+    <rect width="220" height="160" rx="16" fill="url(#ops-grad)" stroke="#64748b" stroke-width="1.5"/>
+    <rect x="20" y="20" width="36" height="36" rx="8" fill="#334155"/>
+    <!-- Activity / Log Icon -->
+    <path d="M 30 40 L 35 32 L 41 44 L 45 36 L 50 40" fill="none" stroke="#38bdf8" stroke-width="2"/>
+    <text x="68" y="38" fill="#ffffff" font-size="16" font-weight="700">Cloud Logging</text>
+    <text x="68" y="56" fill="#94a3b8" font-size="12">Structured Logs</text>
+
+    <text x="20" y="95" fill="#cbd5e1" font-size="11.5">• Audit trail</text>
+    <text x="20" y="115" fill="#cbd5e1" font-size="11.5">• Request correlation</text>
+    <text x="20" y="135" fill="#cbd5e1" font-size="11.5">• Health &amp; metrics</text>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- LAYER 3: DATA, STORAGE, AI & PLATFORM SERVICES -->
+  <!-- ========================================================================= -->
+
+  <!-- 1. CLOUD FIRESTORE -->
+  <g transform="translate(60, 630)" filter="url(#shadow)">
+    <rect width="300" height="230" rx="16" fill="url(#db-grad)" stroke="#f59e0b" stroke-width="2"/>
+    <rect x="20" y="20" width="36" height="36" rx="8" fill="#b45309"/>
+    <!-- Firestore / Database Icon -->
+    <path d="M 28 30 C 28 27 48 27 48 30 C 48 33 28 33 28 30 Z M 28 36 C 28 39 48 39 48 36 M 28 42 C 28 45 48 45 48 42" fill="none" stroke="#fef3c7" stroke-width="2"/>
+    <text x="68" y="38" fill="#ffffff" font-size="18" font-weight="700">Cloud Firestore</text>
+    <text x="68" y="56" fill="#fde68a" font-size="12">NoSQL Serverless Database</text>
+
+    <!-- Collections Tree -->
+    <g transform="translate(20, 80)">
+      <rect width="260" height="32" rx="6" fill="#0f172a" stroke="#d97706" stroke-width="1"/>
+      <text x="12" y="21" fill="#ffffff" font-size="12" font-weight="700">📂 users</text>
+      <text x="100" y="21" fill="#fef3c7" font-size="11.5">Profiles &amp; /attending mirrors</text>
+
+      <rect y="42" width="260" height="32" rx="6" fill="#0f172a" stroke="#d97706" stroke-width="1"/>
+      <text x="12" y="63" fill="#ffffff" font-size="12" font-weight="700">📂 events</text>
+      <text x="100" y="63" fill="#fef3c7" font-size="11.5">29+ active + 7 expired</text>
+
+      <rect y="84" width="260" height="32" rx="6" fill="#0f172a" stroke="#d97706" stroke-width="1"/>
+      <text x="12" y="105" fill="#ffffff" font-size="12" font-weight="700">📂 rsvps</text>
+      <text x="100" y="105" fill="#fef3c7" font-size="11.5">Atomic RSVP subcollections</text>
+
+      <text x="2" y="138" fill="#fef3c7" font-size="11">Composite Indexes • Security Rules</text>
+    </g>
+  </g>
+
+  <!-- 2. CLOUD STORAGE -->
+  <g transform="translate(390, 630)" filter="url(#shadow)">
+    <rect width="280" height="230" rx="16" fill="url(#storage-grad)" stroke="#3b82f6" stroke-width="2"/>
+    <rect x="20" y="20" width="36" height="36" rx="8" fill="#1d4ed8"/>
+    <!-- Image/Cloud Icon -->
+    <path d="M 28 44 L 36 34 L 44 42 L 48 38 L 52 44 Z" fill="#93c5fd"/>
+    <circle cx="34" cy="32" r="3" fill="#93c5fd"/>
+    <text x="68" y="38" fill="#ffffff" font-size="18" font-weight="700">Cloud Storage</text>
+    <text x="68" y="56" fill="#93c5fd" font-size="12">Object Storage Bucket</text>
+
+    <!-- Details -->
+    <g transform="translate(20, 85)">
+      <rect width="240" height="48" rx="8" fill="#0f172a" stroke="#2563eb" stroke-width="1"/>
+      <text x="12" y="22" fill="#ffffff" font-size="12" font-weight="700">📁 events/{uid}/...</text>
+      <text x="12" y="38" fill="#bfdbfe" font-size="11">User-isolated image uploads</text>
+
+      <text x="4" y="72" fill="#dbeafe" font-size="12">• 5MB Max Payload Limit</text>
+      <text x="4" y="92" fill="#dbeafe" font-size="12">• Magic-Byte MIME Validation</text>
+      <text x="4" y="112" fill="#dbeafe" font-size="12">• Public HTTPS CDN Delivery</text>
+      <text x="4" y="132" fill="#dbeafe" font-size="12">• Automated Cascade Cleanup</text>
+    </g>
+  </g>
+
+  <!-- 3. GEMINI / VERTEX AI -->
+  <g transform="translate(700, 630)" filter="url(#shadow)">
+    <rect width="320" height="230" rx="16" fill="url(#ai-grad)" stroke="#a855f7" stroke-width="2"/>
+    <rect x="20" y="20" width="36" height="36" rx="8" fill="#7e22ce"/>
+    <!-- Sparkles AI Icon -->
+    <path d="M 38 26 L 40 33 L 47 35 L 40 37 L 38 44 L 36 37 L 29 35 L 36 33 Z" fill="#f3e8ff"/>
+    <text x="68" y="38" fill="#ffffff" font-size="18" font-weight="700">Gemini / Vertex AI</text>
+    <text x="68" y="56" fill="#d8b4fe" font-size="12">Multimodal GenAI Intelligence</text>
+
+    <!-- Features -->
+    <g transform="translate(20, 85)">
+      <rect width="280" height="48" rx="8" fill="#0f172a" stroke="#9333ea" stroke-width="1"/>
+      <text x="12" y="22" fill="#ffffff" font-size="12" font-weight="700">✨ Gemini 2.5 Flash</text>
+      <text x="12" y="38" fill="#e9d5ff" font-size="11">Structured Schema JSON output</text>
+
+      <text x="4" y="72" fill="#f3e8ff" font-size="12">• AI Event Writing Assistant</text>
+      <text x="4" y="92" fill="#f3e8ff" font-size="12">• Natural Language Smart Search</text>
+      <text x="4" y="112" fill="#f3e8ff" font-size="12">• Auto Category &amp; Tag Extraction</text>
+      <text x="4" y="132" fill="#f3e8ff" font-size="12">• Vertex AI IAM ADC Support</text>
+    </g>
+  </g>
+
+  <!-- 4. GOOGLE MAPS PLATFORM -->
+  <g transform="translate(1050, 630)" filter="url(#shadow)">
+    <rect width="290" height="230" rx="16" fill="url(#maps-grad)" stroke="#10b981" stroke-width="2"/>
+    <rect x="20" y="20" width="36" height="36" rx="8" fill="#047857"/>
+    <!-- Map Pin Icon -->
+    <path d="M 38 26 C 32 26 28 30 28 36 C 28 43 38 52 38 52 C 38 52 48 43 48 36 C 48 30 44 26 38 26 Z M 38 39 A 3 3 0 1 1 38 33 A 3 3 0 0 1 38 39 Z" fill="#d1fae5"/>
+    <text x="68" y="38" fill="#ffffff" font-size="18" font-weight="700">Google Maps Platform</text>
+    <text x="68" y="56" fill="#6ee7b7" font-size="12">Location &amp; Geocoding API</text>
+
+    <!-- Features -->
+    <g transform="translate(20, 85)">
+      <rect width="250" height="48" rx="8" fill="#0f172a" stroke="#059669" stroke-width="1"/>
+      <text x="12" y="22" fill="#ffffff" font-size="12" font-weight="700">📍 Maps JS &amp; Geocoding</text>
+      <text x="12" y="38" fill="#a7f3d0" font-size="11">Interactive community pins</text>
+
+      <text x="4" y="72" fill="#ecfdf5" font-size="12">• Interactive Nearby Events Map</text>
+      <text x="4" y="92" fill="#ecfdf5" font-size="12">• Radius &amp; Distance Calculations</text>
+      <text x="4" y="112" fill="#ecfdf5" font-size="12">• Direct Google Maps Directions</text>
+      <text x="4" y="132" fill="#ecfdf5" font-size="12">• OpenStreetMap Fallback Mode</text>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- CONNECTING ARROWS & DATA FLOWS -->
+  <!-- ========================================================================= -->
+
+  <!-- User -> Frontend -->
+  <path d="M 280 245 L 350 245" fill="none" stroke="#38bdf8" stroke-width="2.5" marker-end="url(#arrow-cyan)"/>
+  <text x="315" y="235" fill="#94a3b8" font-size="11" text-anchor="middle" font-weight="600">HTTPS</text>
+
+  <!-- Frontend -> Firebase Auth -->
+  <path d="M 720 230 L 790 230" fill="none" stroke="#fb923c" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrow-orange)"/>
+  <text x="755" y="220" fill="#fb923c" font-size="10.5" text-anchor="middle">Auth ID Token</text>
+
+  <!-- Frontend -> Cloud Run -->
+  <path d="M 540 320 L 540 380" fill="none" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrow-cyan)"/>
+  <text x="555" y="355" fill="#38bdf8" font-size="12" font-weight="700">REST API /api/*</text>
+
+  <!-- Cloud Run -> Cloud Logging -->
+  <path d="M 1060 470 L 1110 470" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow-slate)"/>
+
+  <!-- Cloud Run -> Firestore -->
+  <path d="M 450 550 C 450 590, 210 570, 210 620" fill="none" stroke="#fbbf24" stroke-width="2.5" marker-end="url(#arrow-amber)"/>
+
+  <!-- Cloud Run -> Cloud Storage -->
+  <path d="M 580 550 L 530 620" fill="none" stroke="#60a5fa" stroke-width="2.5" marker-end="url(#arrow-cyan)"/>
+
+  <!-- Cloud Run -> Gemini / Vertex AI -->
+  <path d="M 750 550 L 820 620" fill="none" stroke="#c084fc" stroke-width="2.5" marker-end="url(#arrow-purple)"/>
+
+  <!-- Frontend / Cloud Run -> Google Maps -->
+  <path d="M 950 550 C 950 590, 1150 580, 1150 620" fill="none" stroke="#34d399" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+</svg>

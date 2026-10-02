@@ -1,0 +1,28 @@
+{
+  "name": "nearby-objects",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Nearby-objects — Discover. Connect. Participate. A location-aware community event platform on Google Cloud.",
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "dev:api": "npm run dev --prefix backend",
+    "dev:web": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix backend && npm run build --prefix frontend",
+    "typecheck": "npm run typecheck --prefix backend && npm run typecheck --prefix frontend",
+    "seed": "tsx scripts/seed-events.ts",
+    "seed:clear": "tsx scripts/seed-events.ts --clear",
+    "start": "npm start --prefix backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.5",
+    "firebase-admin": "^14.5.0",
+    "tsx": "^4.23.15"
+  }
+}

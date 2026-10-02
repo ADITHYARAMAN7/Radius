@@ -1,0 +1,128 @@
+rules_version = '2';
+
+/**
+ * Nearby-objects Firestore security rules.
+ *
+ * All application writes go through the Cloud Run API, which authenticates with a
+ * service account and therefore bypasses these rules entirely. They exist as the second
+ * line of defence: if a Firebase client SDK key is ever used to talk to Firestore
+ * directly — by this app in future, or by someone who extracted the public web config —
+ * these rules are what stop it writing anything it should not.
+ *
+ * The posture is: reading the board is public, every write is either denied outright or
+ * restricted to the owner of the data, and the fields that must not be client-controlled
+ * (rsvpCount, creatorId, status) can never be set from a client.
+ *
+ * Deploy with:  firebase deploy --only firestore:rules
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    /* ------------------------------------------------------------- users */
+
+    match /users/{uid} {
+      // Profiles are public: an event shows its organiser's name and photo.
+      allow read: if true;
+
+      // A user may only ever write their own profile document.
+      allow create: if isSelf(uid)
+                    && request.resource.data.uid == uid;
+
+      allow update: if isSelf(uid)
+                    // uid is the document key — letting it change would orphan the doc.
+                    && request.resource.data.uid == resource.data.uid;
+
+      allow delete: if false;
+
+      /**
+       * The mirror of "events I am attending". Written inside the same transaction as the
+       * RSVP by the API; a client may read its own but never forge one, because that
+       * would put an event in someone's list without an actual RSVP.
+       */
+      match /attending/{eventId} {
+        allow read: if isSelf(uid);
+        allow write: if false;
+      }
+    }
+
+    /* ------------------------------------------------------------ events */
+
+    match /events/{eventId} {
+      // The board is public — no account needed to browse or to open a shared link.
+      allow read: if true;
+
+      /**
+       * Creation requires that the claimed organiser is the caller, and that the
+       * counters and lifecycle fields start from a known state. Without these checks a
+       * client could publish an event pre-loaded with 10,000 RSVPs.
+       */
+      allow create: if isSignedIn()
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.resource.data.rsvpCount == 0
+                    && request.resource.data.status == 'ACTIVE'
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() >= 5
+                    && request.resource.data.title.size() <= 120
+                    && request.resource.data.description is string
+                    && request.resource.data.description.size() >= 20
+                    && request.resource.data.category in [
+                         'Sports', 'Music', 'Food', 'Yard Sale',
+                         'Community', 'Education', 'Technology', 'Other'
+                       ];
+
+      /**
+       * Only the organiser may edit, and they may not reassign the event or edit the
+       * RSVP count — that number is only ever changed by the transaction in the API.
+       *
+       * Status is also locked here: lifecycle transitions (cancel, reactivate, expire)
+       * go through the API service which enforces the state machine. A direct client
+       * write cannot flip a CANCELLED event back to ACTIVE or vice-versa.
+       */
+      allow update: if isSignedIn()
+                    && resource.data.creatorId == request.auth.uid
+                    && request.resource.data.creatorId == resource.data.creatorId
+                    && request.resource.data.rsvpCount == resource.data.rsvpCount
+                    && request.resource.data.status == resource.data.status;
+
+      allow delete: if isSignedIn() && resource.data.creatorId == request.auth.uid;
+
+      /* ------------------------------------------------------- rsvps */
+
+      match /rsvps/{uid} {
+        // Who is going is visible on the event page.
+        allow read: if true;
+
+        /**
+         * You may only create or remove your own RSVP, and the document id must be your
+         * own uid — which is what makes a duplicate RSVP impossible rather than merely
+         * discouraged.
+         *
+         * Note these rules alone cannot keep rsvpCount in step with this subcollection;
+         * that is why RSVPs are written through the API's transaction in practice.
+         */
+        allow create: if isSelf(uid)
+                      && request.resource.data.uid == uid;
+
+        allow delete: if isSelf(uid);
+
+        // An RSVP has no mutable fields — cancel and re-join instead.
+        allow update: if false;
+      }
+    }
+
+    /* ----------------------------------------------------------- default */
+
+    // Anything not matched above is denied, so a new collection is closed by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
