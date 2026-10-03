@@ -415,3 +415,7 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   unused `gemini-api-key` secret (AI_PROVIDER=vertex ignores it).
   **Left for the team:** confirm Google sign-in; merge PR #3; build the PPT from `docs/presentation-slides.md`
   (screenshot the dashboard), record the video, email the submission; demo morning `.scriptsdemo-day.ps1`.
+- Oct 3 (final check before merging PR #3): Google sign-in confirmed by Suhas on the live URL. typecheck + build
+  clean; verify 134/134, intelligence 18/18, pulse 33/33; live Chrome smoke test 16/16 (check-in needs the board
+  seeded < ~2.5 h earlier: the "Live now" event lasts 2 h 45 min from seeding, so run demo-day.ps1 shortly before
+  the demo); live board 35 events, none ended, soonest first; scheduler enabled. PR #3 description updated.
