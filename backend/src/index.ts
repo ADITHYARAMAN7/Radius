@@ -71,6 +71,10 @@ export function createApp(): express.Express {
       crossOriginEmbedderPolicy: false,
       // Event images are served from storage.googleapis.com.
       crossOriginResourcePolicy: { policy: 'cross-origin' },
+      // "Continue with Google" opens a Firebase popup that reports back to this page;
+      // helmet's default (same-origin) cuts that link and the sign-in fails as
+      // "popup closed by user".
+      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     }),
   );
 

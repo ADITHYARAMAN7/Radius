@@ -55,7 +55,7 @@ Adhi's Flask version is a prototype; we only port ideas from it (see §6).
 - `frontend/` — React 18 + TypeScript + Vite + Tailwind. Firebase Auth (login) in the browser.
 - `backend/` — Node 20 + Express + TypeScript. Zod validation, helmet, rate limiting, structured logger.
 - Database: **Cloud Firestore** (`events`, `events/{id}/rsvps`, `users`, `users/{uid}/attending`).
-- Images: Cloud Storage. AI: Gemini (`@google/genai`, default model `gemini-3.8-flash`, or Vertex AI).
+- Images: Cloud Storage. AI: Gemini (`@google/genai`, default model `gemini-3.5-flash-lite` (cheapest; tested on all 4 AI features), fallback `gemini-3.1-flash-lite`, or Vertex AI).
   Note: Google no longer offers `gemini-2.5-flash` to new API keys (404) — that was main's old default.
 - Maps: Google Maps JS API via `@googlemaps/js-api-loader` (Explore map + event detail map).
 - Deploy: one Docker image (`docker/Dockerfile`) built by `cloudbuild.yaml` → **Cloud Run** (`asia-south1`).
@@ -94,13 +94,11 @@ Adhi's Flask version is a prototype; we only port ideas from it (see §6).
 - From suhas-dev: Snap-a-Poster (idea by Adhi; Gemini only), Places autocomplete (with a Maps key) feeding
   the draggable pin, spelling-proof neighbourhood filter + suggestions, Popular badge, Amrita/Ettimadai seed
   events, month calendar view, installable PWA, Gemini fallback model, deploy fixes ($BUILD_ID, TZ).
-- **Open security item (needs Kanish's OK):** `checkInCode` lives on the event document and
-  `firestore.rules` allows public reads of events, so anyone could read codes straight from Firestore. The
-  frontend never reads Firestore directly, so `allow read: if false;` on `/events` (or moving the code to a
-  private subcollection) closes it without breaking anything.
-- Docs updated to match: README, `docs/roadmap.md`, `docs/presentation-slides.md`, `docs/demo-script.md`.
-  **Not yet reviewed:** `docs/cognizant-hackathon-report.md`, `docs/architecture*.md` may still contain old
-  claims (e.g. Gemini 1.5) — check before submitting them.
+- **Security (fixed Oct 3, Kanish OK):** `firestore.rules` now denies client reads of `/events`, so check-in
+  codes can't be read straight from Firestore. The board stays public through the API, which only sends the
+  code to the organiser.
+- Docs match the deployment (Oct 3): report, current-status, architecture-diagram (+ svg), security,
+  gcp-deployment/gcp-architecture names + Vertex `global`, slides, demo script, README.
 - **Not verified by a human in the browser yet** (only API + build): see the click-through list in the PR.
 
 ---
@@ -380,3 +378,44 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   Firebase setup: web config + service-account key), lock the Maps key, Firestore rule for check-in codes
   (Kanish), billing (card/credits) for Cloud Run + Storage + Scheduler + monitoring, deck/video/report.
   **Next: cloud integration** (deployment checklist in §3).
+- Oct 3 (night): **DEPLOYED to Google Cloud.** Live: **https://nearby-events-x2gneiue7a-el.a.run.app** (also
+  https://nearby-events-830388660133.asia-south1.run.app). Project `nearby-events-510418` (billing = $300 trial).
+  Done: $25 budget alert (50/90/100 %); `scripts/gcp-setup.sh` (APIs, Artifact Registry `nearby-events`, bucket
+  `nearby-events-510418-event-images`, runtime SA `nearby-events-run`, secrets); Firebase added; Firestore
+  (Native, asia-south1) + rules + indexes deployed; Auth: Email/Password + Google on; web app
+  `nearby-events-web`; real DB seeded (43 events, 18 profiles); Cloud Run in asia-south1 with
+  **AI_PROVIDER=vertex, VERTEX_LOCATION=global** (Flash-Lite is only served from `global` on Vertex — not
+  us-central1/asia-south1; no Gemini key in prod); Cloud Run URLs added to Firebase authorized domains; **Maps
+  key locked** to localhost:5173 + both run.app URLs (other sites get PERMISSION_DENIED); Cloud Scheduler
+  `expire-events` hourly (Asia/Kolkata), verified 200; uptime check "Nearby-Events health" (/api/health, 5 min)
+  + alert policy emailing Suhas. Note: this project builds with the **compute default SA**
+  (`830388660133-compute@…`), which needed run.admin, iam.serviceAccountUser, artifactregistry.writer,
+  logging.logWriter, storage.objectViewer. Live smoke test in Chrome **16/16** (Google map, Places pick, photo
+  to Cloud Storage, real sign-up, publish, RSVP, check-in NEARBY, Snap-a-Poster via Vertex, delete) — test
+  user/event deleted afterwards. **Redeploy:** `.\scripts\deploy.ps1` (reads gitignored
+  `frontend/.env.production`; ~5 min). Gotchas: Git Bash mangles paths like `/api/health` in gcloud args
+  (use PowerShell); `gcloud alpha` isn't installed (use REST).
+  **Still to do:** Suhas tests real "Continue with Google" on the live URL (can't be automated); re-seed the
+  real DB on the morning of Oct 6 and set `--min-instances=1` for the demo; merge PR #3; slides / video / report; monitoring screenshots for the slides.
+- Oct 3 (night): **Check-in code leak closed** (Kanish OK). Confirmed live first: the public web key could read
+  every event's `checkInCode` via the Firestore REST API. `firestore.rules`: `/events` → `allow read: if false`
+  (nothing in the frontend reads Firestore; the API uses the Admin SDK). Deployed to `nearby-events-510418`;
+  re-checked: direct read → PERMISSION_DENIED, site still lists 35 events, public API responses carry no codes.
+- Oct 3 (late night): **Wrap-up.** Google sign-in fix: helmet's default COOP `same-origin` broke the Firebase
+  popup ("window closed before finishing") → `same-origin-allow-popups` (deployed; Suhas to confirm in a real
+  browser). `deploy.ps1` no longer aborts on gcloud's stderr progress. **Monitoring:** dashboard "Nearby-Events -
+  live monitoring" + 7 log-based metrics (events_created, rsvps_created, poster_extractions, ai_retries,
+  ai_failures, app_errors, expiry_sweeps); definitions in `monitoring/`. **Maps key** narrowed to Maps JS +
+  Places + Place widgets (Geocoding etc. now denied; live map + Places verified) and **daily caps** set
+  (autocomplete 1,000, place details 500, text/nearby search/photos 100, map loads 2,000). **Vertex default
+  location is now `global`** in code, cloudbuild and examples (Flash-Lite isn't served in us-central1).
+  `scripts/demo-day.ps1` (re-seed live + min-instances=1; `-Off` to undo) — tested on live. Brief PDF
+  untracked + gitignored (it was committed in 7910b9b on main; the repo is private, history not rewritten).
+  Docs rewritten to reality with measured live latency (board p95 239 ms). Note: Cloud Run still mounts the
+  unused `gemini-api-key` secret (AI_PROVIDER=vertex ignores it).
+  **Left for the team:** confirm Google sign-in; merge PR #3; build the PPT from `docs/presentation-slides.md`
+  (screenshot the dashboard), record the video, email the submission; demo morning `.scriptsdemo-day.ps1`.
+- Oct 3 (final check before merging PR #3): Google sign-in confirmed by Suhas on the live URL. typecheck + build
+  clean; verify 134/134, intelligence 18/18, pulse 33/33; live Chrome smoke test 16/16 (check-in needs the board
+  seeded < ~2.5 h earlier: the "Live now" event lasts 2 h 45 min from seeding, so run demo-day.ps1 shortly before
+  the demo); live board 35 events, none ended, soonest first; scheduler enabled. PR #3 description updated.

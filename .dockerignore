@@ -3,6 +3,8 @@
 **/build
 **/.env
 **/.env.local
+**/.env.*
+!**/.env.example
 **/*.log
 **/.git
 .git
