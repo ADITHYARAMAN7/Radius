@@ -38,7 +38,7 @@ export function CalendarExport({ event }: CalendarExportProps) {
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Nearby-Events//Community Bulletin Board//EN',
+      'PRODID:-//Radius//Community Bulletin Board//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
       'BEGIN:VEVENT',

@@ -1,7 +1,7 @@
-# Nearby-Events — Submission Report
+# Radius — Submission Report
 
 **Cognizant NPN GCP Hackathon · Use Case 5: Local Event Bulletin Board**
-**Live:** https://nearby-events-x2gneiue7a-el.a.run.app · **Code:** github.com/kanishmanickam/Nearby-Events (private)
+**Live:** https://radius-x2gneiue7a-el.a.run.app · **Code:** github.com/kanishmanickam/Radius (private)
 **Team:** Kanish, Adhi, Suhas *(add the remaining members and mentors)*
 
 > Everything described as *built* runs on the live Google Cloud deployment today. Numbers marked
@@ -84,7 +84,7 @@ current. 18 demo neighbour profiles carry RSVP and points history.
  Browser (React + TypeScript SPA) ──Firebase Auth (ID token)──┐
    │  Google Maps JS + Places API (New)                        │
    ▼  HTTPS /api/*                                             ▼
- Cloud Run  "nearby-events"  (asia-south1, Node 20 + Express, serves API and the app, scales 0–10)
+ Cloud Run  "radius"  (asia-south1, Node 20 + Express, serves API and the app, scales 0–10)
    ├── Cloud Firestore (Native, asia-south1)   events, rsvps, users, comments
    ├── Cloud Storage                           event images
    ├── Vertex AI: Gemini 3.5 Flash-Lite        (fallback 3.1 Flash-Lite → built-in rules)
@@ -146,7 +146,7 @@ current. 18 demo neighbour profiles carry RSVP and points history.
 | Location quality | target > 90 % of events with a map pin | Places autocomplete + server geocoding |
 | Cost | within the $300 trial; $25 budget alert | Billing budget at 50 / 90 / 100 % |
 
-**Monitoring approach:** one Cloud Monitoring dashboard ("Nearby-Events - live monitoring") shows requests by
+**Monitoring approach:** one Cloud Monitoring dashboard ("Radius - live monitoring") shows requests by
 response class, p50/p95 latency, running instances, uptime, events and RSVPs per hour, Gemini health
 (successes, retries on the fallback model, failures) and server errors. The app activity and AI charts come
 from **log-based metrics** built on the API's structured JSON logs, so they cost nothing extra.

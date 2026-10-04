@@ -6,6 +6,8 @@ export const CATEGORIES = [
   'Community',
   'Education',
   'Technology',
+  'Art',
+  'Health',
   'Other',
 ] as const;
 

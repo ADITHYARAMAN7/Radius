@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 type Theme = 'light' | 'dark';
 
-const STORAGE_KEY = 'nearby-objects:theme';
+const STORAGE_KEY = 'radius:theme';
 
 function readStoredTheme(): Theme | null {
   try {

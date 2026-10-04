@@ -55,7 +55,7 @@ function isRetryableGeminiError(error: unknown): boolean {
  * busy, one retry on GEMINI_FALLBACK_MODEL — a model under "high demand" often stays that
  * way for minutes, so retrying the same one rarely helps.
  */
-async function generateWithFallback(
+export async function generateWithFallback(
   purpose: string,
   params: Omit<GenerateContentParameters, 'model'>,
 ): Promise<{ response: GenerateContentResponse; model: string }> {
@@ -216,7 +216,7 @@ const SEARCH_SCHEMA = {
   properties: {
     keywords: {
       type: Type.STRING,
-      description: 'The free-text part of the query — topic words only, no place or date words.',
+      description: 'The free-text part of the query — topic words only, no place or date words. IMPORTANT: Correct any obvious typos (e.g. "tournamet" -> "tournament", "basket ball" -> "basketball").',
     },
     category: {
       type: Type.STRING,
@@ -643,5 +643,86 @@ export async function extractEventDetails(input: ExtractInput): Promise<Extracti
     });
 
     throw AppError.unavailable("Couldn't read it automatically. Please fill the form manually.");
+  }
+}
+
+/**
+ * Moderates event content before publishing.
+ * Returns true if the content is safe and complies with community guidelines.
+ * Returns false if it contains vulgar, explicit, or 18+ content.
+ */
+export async function moderateContent(title: string, description: string): Promise<boolean> {
+  if (!capabilities.ai) {
+    return true; // Pass if AI is not configured
+  }
+
+  getClient();
+
+  const prompt = `
+You are a strict content moderation assistant for a community events board.
+Analyze the following event title and description.
+Is this content 18+, vulgar, sexually explicit, highly offensive, or fundamentally inappropriate for a general neighborhood bulletin board?
+
+Title: ${title}
+Description: ${description}
+
+Respond with a JSON object containing a single boolean field "isSafe".
+"isSafe" MUST be false if the content contains explicit, vulgar, or 18+ material.
+"isSafe" MUST be true if the content is generally acceptable for a community board.
+`;
+
+  try {
+    const { response } = await generateWithFallback('content moderation', {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        temperature: 0,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            isSafe: {
+              type: Type.BOOLEAN,
+              description: 'True if the content is safe, false if it contains vulgar or 18+ content',
+            },
+          },
+          required: ['isSafe'],
+        },
+      },
+    });
+
+    const raw = response.text;
+    if (!raw) return true; // Fail open
+
+    const result = JSON.parse(raw) as { isSafe: boolean };
+    return result.isSafe ?? true;
+  } catch (error) {
+    logger.error('Content moderation failed', { reason: String(error) });
+    return true; // Fail open so users aren't blocked if AI is down
+  }
+}
+
+/**
+ * Generates a stunning promotional poster using Vertex AI Imagen 3.
+ */
+export async function generateEventImage(title: string, description: string): Promise<Buffer | null> {
+  if (!capabilities.ai) return null;
+
+  const ai = getClient();
+
+  try {
+    const response = await ai.models.generateImages({
+      model: 'imagen-3.0-generate-002',
+      prompt: `A stunning promotional poster for an event titled: ${title}. Description: ${description}. Vibrant, modern, engaging.`,
+      config: { numberOfImages: 1, aspectRatio: '16:9', outputMimeType: 'image/jpeg' },
+    });
+
+    const bytes = response.generatedImages?.[0]?.image?.imageBytes;
+    if (bytes) {
+      return Buffer.from(bytes, 'base64');
+    }
+    return null;
+  } catch (error) {
+    logger.error('Imagen generation failed', { reason: String(error) });
+    return null;
   }
 }

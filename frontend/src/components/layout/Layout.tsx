@@ -57,11 +57,11 @@ function Footer() {
       <div className="container-page py-12">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div className="sm:col-span-2">
-            <div className="flex items-center gap-2.5 font-display text-[1.0625rem] font-extrabold tracking-tight text-ink">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white">
+            <div className="flex items-center gap-2.5 font-display text-[1.15rem] font-extrabold tracking-tight text-ink">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md">
                 <MapPin className="h-[1.125rem] w-[1.125rem]" aria-hidden="true" />
               </span>
-              Nearby-Events
+              Radius
             </div>
 
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-ink-soft">
@@ -75,9 +75,9 @@ function Footer() {
             <ul className="mt-3 space-y-2 text-sm">
               {[
                 { to: '/explore', label: 'Explore events' },
-                { to: '/events/new', label: 'Create an event' },
-                { to: '/community', label: 'Community & leaderboard' },
-                { to: '/insights', label: 'Community insights' },
+                { to: '/events/new', label: 'Post an event' },
+                { to: '/ask', label: 'Ask the Board' },
+                { to: '/pulse', label: 'Pulse' },
               ].map((item) => (
                 <li key={item.to}>
                   <Link to={item.to} className="text-ink-soft transition-colors hover:text-brand">
@@ -107,7 +107,7 @@ function Footer() {
         </div>
 
         <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-border pt-6 text-xs text-ink-muted sm:flex-row sm:items-center">
-          <p>© {year} Nearby-Events · Cognizant NPN GCP Hackathon prototype</p>
+          <p>© {year} Radius · Cognizant NPN GCP Hackathon prototype</p>
           <p className="flex items-center gap-1.5">
             <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />
             Cloud Run · Firestore · Cloud Storage · Gemini · Maps Platform

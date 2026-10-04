@@ -1,4 +1,4 @@
-# Nearby-Events — Local Event Bulletin Board
+# Radius — Local Event Bulletin Board
 Cognizant NPN GCP Hackathon · Use Case 5
 
 This file is the shared brief for everyone on the team and for Claude Code. Read it fully before doing anything.
@@ -67,7 +67,7 @@ Adhi's Flask version is a prototype; we only port ideas from it (see §6).
 ### Useful commands (from repo root)
 - `npm run install:all` — install root + backend + frontend (uses `cd`, so it never edits package.json)
 - `npm run dev` — **local mode (from main, zero config)**: with no project/credentials/emulator host in
-  `backend/.env`, it starts the Firestore + Auth emulators (project `demo-nearby-events`, data kept in
+  `backend/.env`, it starts the Firestore + Auth emulators (project `demo-radius`, data kept in
   `.emulator-data/`), seeds the demo board, runs API (:8080) + web (:5173). Photos go to local disk; AI uses
   Gemini if `GEMINI_API_KEY` is set, otherwise the built-in rule-based assistant. "Continue with the demo
   account" on the sign-in page. Needs Java 21. `npm run dev:local` is an alias.
@@ -111,7 +111,7 @@ There is **no Google Maps key yet**.
 
 ### Features today — ✅ all 7 done on Oct 2 (details in the Progress log)
 1. **Local setup**: Firebase emulators (Firestore + Auth) + seeded demo data + fix the `npm run install:all`
-   quirk (`npm install --prefix` adds a stray `"nearby-objects": "file:.."` dependency to both package.json files).
+   quirk (`npm install --prefix` adds a stray `"radius": "file:.."` dependency to both package.json files).
 2. **Snap-a-Poster** (idea from Adhi, re-implemented): upload a poster photo or paste a forwarded WhatsApp
    message → Gemini extracts title/date/time/location/category/description → pre-fills the Create Event form
    for the user to review. Reuse the existing Gemini client, `requireAuth` and the per-user AI throttle.
@@ -134,9 +134,9 @@ There is **no Google Maps key yet**.
 Follow `docs/gcp-deployment.md`; deploy **this branch's code** (after Kanish merges the PR, or from `suhas-dev`).
 1. **Project & budget**: create the GCP project on the free trial (never "Upgrade"); **budget alert** on the
    billing account (alerts at 50% / 90% / 100% of a small budget).
-2. **Names**: replace every `nearby-objects` placeholder with the real IDs — `cloudbuild.yaml` (`_SERVICE`,
-   `_REPO`, service account `nearby-objects-run@…`), `.env.example` values, the `gcloud` commands in the guide.
-   Decide the app's display name too (UI says "Nearby-objects", manifest/repo say "Nearby-Events").
+2. **Names**: replace every `radius` placeholder with the real IDs — `cloudbuild.yaml` (`_SERVICE`,
+   `_REPO`, service account `radius-run@…`), `.env.example` values, the `gcloud` commands in the guide.
+   Decide the app's display name too (UI says "Radius", manifest/repo say "Radius").
 3. **Firebase**: add the project in Firebase; Firestore (Native) in `asia-south1`; deploy `firestore.rules`
    and `firestore.indexes.json`; **Auth → enable Email/Password and Google**, and add the Cloud Run URL to
    **Authorized domains**; register a Web app and copy its config into the `_VITE_FIREBASE_*` substitutions.
@@ -317,13 +317,13 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   Next: feature 6 (PWA, if time) or 7 (final check + PR).
 - Oct 2: **Feature 6 done — installable PWA** (manifest only, **no service worker on purpose**: not needed for
   install on Chrome/iOS, and an app-shell cache risks serving an old version after a deploy).
-  `frontend/public/manifest.webmanifest` ("Nearby-Events", theme `#0f172a` = existing meta, background
+  `frontend/public/manifest.webmanifest` ("Radius", theme `#0f172a` = existing meta, background
   `#f8f9fc`), icons in `frontend/public/icons/` (192, 512, maskable 512, apple-touch 180) generated from the
   favicon by `node scripts/generate-pwa-icons.mjs` (headless Chrome/Edge, no new deps). index.html links them.
   Backend serves `.webmanifest` with `no-cache` (it was going to be cached "immutable" for a year).
   Checked with the built backend + SERVE_STATIC=true: manifest `application/manifest+json`, icons `image/png`.
-  **For later:** (1) the app calls itself "Nearby-objects" (title, navbar, package.json, README) while the
-  manifest/repo say "Nearby-Events" — decide on one name; (2) the SPA fallback returns index.html (200) for
+  **For later:** (1) the app calls itself "Radius" (title, navbar, package.json, README) while the
+  manifest/repo say "Radius" — decide on one name; (2) the SPA fallback returns index.html (200) for
   missing files like `/assets/old.js` — should 404 for paths with a file extension.
   Next: feature 7 (final check + PR).
 - Oct 2: **Feature 7 — final check.** Fresh seed:clear + seed; verify 134/134; scripted API regression 38/38;
@@ -336,7 +336,7 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   missing files → now 404 for paths with an extension. Docs rewritten to match reality (README, roadmap,
   slides, demo script; removed claims such as "Gemini 1.5", Leaflet, "197/146 automated tests").
   Headless screenshots couldn't load data reliably, so **UI click-through is still on Suhas** (list in the PR).
-  **Still open (not fixed):** app display name ("Nearby-objects" vs "Nearby-Events"); report/architecture docs
+  **Still open (not fixed):** app display name ("Radius" vs "Radius"); report/architecture docs
   not re-checked; Places spellings need the real key; events are single-day only.
   PR `suhas-dev → main` opened for Kanish — do not merge without review.
 - Oct 2 (evening): **Merged `main` into `suhas-dev`** (Kanish: recommendations + trending; Thahseen: check-in,
@@ -344,7 +344,7 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   11 conflicting files resolved, mostly "keep both". Decisions: main's zero-config `npm run dev` replaces
   my `.env`-based setup (`dev:local` is now an alias; my `install:all` fix kept); Places autocomplete feeds
   main's EventLocationPin; one Maps loader; AI chain Gemini → fallback → rules, Snap-a-Poster Gemini-only.
-  Also fixed: main's package.json files had the `"nearby-objects": "file:.."` self-dependency (from Kanish's
+  Also fixed: main's package.json files had the `"radius": "file:.."` self-dependency (from Kanish's
   `npm install --prefix`), removed; duplicate auth block in firebase.json; README errors (port 5000,
   GCS_BUCKET_NAME, VITE_API_BASE_URL, 36 events, Gemini 1.5); verify test updated because createEvent now
   geocodes missing pins. Tests: verify 134/134, intelligence 18/18, pulse 33/33, API regression 50/51 (the 1 =
@@ -359,7 +359,7 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   suggestions without a Google key (Photon, `/api/places/suggest` + `/resolve`, `AddressSuggest.tsx`) — tested
   Brookefields → Ram Nagar, Amrita → Ettimadai, RS Puram → "R.S. Puram"; voice search set to `en-IN` with
   clear messages for no internet / mic blocked / no mic (tested with a simulated microphone); visible app name
-  is now **Nearby-Events** everywhere; home stat "City: Coimbatore". 16/16 new UI checks pass.
+  is now **Radius** everywhere; home stat "City: Coimbatore". 16/16 new UI checks pass.
   **Next:** create the Maps key (then test Google map + Places live), working Gemini key, then cloud deployment.
 - Oct 3: **Google Maps key added** (Suhas's project; in `frontend/.env`, gitignored). Tested live in Chrome:
   Explore + event pages show Google Maps (35 pins, no console errors); Places autocomplete widget types,
@@ -378,16 +378,16 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   Firebase setup: web config + service-account key), lock the Maps key, Firestore rule for check-in codes
   (Kanish), billing (card/credits) for Cloud Run + Storage + Scheduler + monitoring, deck/video/report.
   **Next: cloud integration** (deployment checklist in §3).
-- Oct 3 (night): **DEPLOYED to Google Cloud.** Live: **https://nearby-events-x2gneiue7a-el.a.run.app** (also
-  https://nearby-events-830388660133.asia-south1.run.app). Project `nearby-events-510418` (billing = $300 trial).
-  Done: $25 budget alert (50/90/100 %); `scripts/gcp-setup.sh` (APIs, Artifact Registry `nearby-events`, bucket
-  `nearby-events-510418-event-images`, runtime SA `nearby-events-run`, secrets); Firebase added; Firestore
+- Oct 3 (night): **DEPLOYED to Google Cloud.** Live: **https://radius-x2gneiue7a-el.a.run.app** (also
+  https://radius-830388660133.asia-south1.run.app). Project `radius-510418` (billing = $300 trial).
+  Done: $25 budget alert (50/90/100 %); `scripts/gcp-setup.sh` (APIs, Artifact Registry `radius`, bucket
+  `radius-510418-event-images`, runtime SA `radius-run`, secrets); Firebase added; Firestore
   (Native, asia-south1) + rules + indexes deployed; Auth: Email/Password + Google on; web app
-  `nearby-events-web`; real DB seeded (43 events, 18 profiles); Cloud Run in asia-south1 with
+  `radius-web`; real DB seeded (43 events, 18 profiles); Cloud Run in asia-south1 with
   **AI_PROVIDER=vertex, VERTEX_LOCATION=global** (Flash-Lite is only served from `global` on Vertex — not
   us-central1/asia-south1; no Gemini key in prod); Cloud Run URLs added to Firebase authorized domains; **Maps
   key locked** to localhost:5173 + both run.app URLs (other sites get PERMISSION_DENIED); Cloud Scheduler
-  `expire-events` hourly (Asia/Kolkata), verified 200; uptime check "Nearby-Events health" (/api/health, 5 min)
+  `expire-events` hourly (Asia/Kolkata), verified 200; uptime check "Radius health" (/api/health, 5 min)
   + alert policy emailing Suhas. Note: this project builds with the **compute default SA**
   (`830388660133-compute@…`), which needed run.admin, iam.serviceAccountUser, artifactregistry.writer,
   logging.logWriter, storage.objectViewer. Live smoke test in Chrome **16/16** (Google map, Places pick, photo
@@ -399,11 +399,11 @@ Single `app.py` Flask app + plain HTML/JS PWA. Nice UI and good ideas, but:
   real DB on the morning of Oct 6 and set `--min-instances=1` for the demo; merge PR #3; slides / video / report; monitoring screenshots for the slides.
 - Oct 3 (night): **Check-in code leak closed** (Kanish OK). Confirmed live first: the public web key could read
   every event's `checkInCode` via the Firestore REST API. `firestore.rules`: `/events` → `allow read: if false`
-  (nothing in the frontend reads Firestore; the API uses the Admin SDK). Deployed to `nearby-events-510418`;
+  (nothing in the frontend reads Firestore; the API uses the Admin SDK). Deployed to `radius-510418`;
   re-checked: direct read → PERMISSION_DENIED, site still lists 35 events, public API responses carry no codes.
 - Oct 3 (late night): **Wrap-up.** Google sign-in fix: helmet's default COOP `same-origin` broke the Firebase
   popup ("window closed before finishing") → `same-origin-allow-popups` (deployed; Suhas to confirm in a real
-  browser). `deploy.ps1` no longer aborts on gcloud's stderr progress. **Monitoring:** dashboard "Nearby-Events -
+  browser). `deploy.ps1` no longer aborts on gcloud's stderr progress. **Monitoring:** dashboard "Radius -
   live monitoring" + 7 log-based metrics (events_created, rsvps_created, poster_extractions, ai_retries,
   ai_failures, app_errors, expiry_sweeps); definitions in `monitoring/`. **Maps key** narrowed to Maps JS +
   Places + Place widgets (Geocoding etc. now denied; live map + Places verified) and **daily caps** set

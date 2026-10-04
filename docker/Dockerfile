@@ -1,12 +1,12 @@
 # =============================================================================
-# Nearby-objects — single Cloud Run service
+# Radius — single Cloud Run service
 #
 # One container serves the API and the built React SPA. That is deliberate: it
 # means one deploy, one URL, no CORS between the two halves, and a shared event
 # link works the moment it is pasted.
 #
 # Build from the REPOSITORY ROOT, not from this directory:
-#   docker build -f docker/Dockerfile -t nearby-objects .
+#   docker build -f docker/Dockerfile -t radius .
 #
 # The VITE_* values are build arguments, not runtime env vars, because Vite
 # inlines them into the bundle at build time. They are public by design — the
@@ -21,7 +21,7 @@ WORKDIR /app/frontend
 
 # Copy manifests first so `npm ci` is cached until dependencies actually change.
 COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci
+RUN npm install
 
 COPY frontend/ ./
 
@@ -52,7 +52,7 @@ FROM node:20-alpine AS backend-build
 WORKDIR /app/backend
 
 COPY backend/package.json backend/package-lock.json* ./
-RUN npm ci
+RUN npm install
 
 COPY backend/ ./
 RUN npm run build

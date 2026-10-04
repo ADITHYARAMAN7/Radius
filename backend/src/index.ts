@@ -192,7 +192,7 @@ export function createApp(): express.Express {
 }
 
 const CREDENTIALS_HELP = `
-Nearby-objects could not authenticate to Google Cloud, so Firestore is unreachable.
+Radius could not authenticate to Google Cloud, so Firestore is unreachable.
 Pick whichever of these fits where you are running:
 
   1. Service account key (simplest locally)
@@ -228,7 +228,7 @@ function start(): void {
   const app = createApp();
 
   const server = app.listen(env.port, () => {
-    logger.info('Nearby-objects API listening', {
+    logger.info('Radius API listening', {
       port: env.port,
       environment: env.nodeEnv,
       mode: env.localMode ? 'local emulators (no Google Cloud credentials needed)' : 'google cloud',

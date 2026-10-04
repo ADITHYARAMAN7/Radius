@@ -41,7 +41,7 @@ const authEmulatorHost =
   configuredEmulatorHost || (import.meta.env.DEV && !config.apiKey ? '127.0.0.1:9099' : undefined);
 
 /** Must match the project id the emulators and the API run under. */
-const LOCAL_PROJECT_ID = 'demo-nearby-events';
+const LOCAL_PROJECT_ID = 'demo-radius';
 
 /** True when accounts live in the local emulator rather than in real Firebase Auth. */
 export const isLocalAuth = Boolean(authEmulatorHost);
@@ -164,7 +164,7 @@ export async function signInWithGoogle(): Promise<User> {
 }
 
 /** A ready-made account for demos, so nobody has to invent an email to try the app. */
-const DEMO_ACCOUNT = { email: 'demo@nearby-events.local', password: 'demo-neighbour', name: 'Demo Neighbour' };
+const DEMO_ACCOUNT = { email: 'demo@radius.local', password: 'demo-neighbour', name: 'Demo Neighbour' };
 
 /**
  * One-click sign-in for local mode. Creates the demo account the first time and signs

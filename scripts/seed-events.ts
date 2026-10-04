@@ -42,7 +42,7 @@ import { placeKey } from '../backend/src/utils/search';
 // fall through to real Google Cloud credentials.
 const emulatorHost = env.firestoreEmulatorHost || process.env.FIRESTORE_EMULATOR_HOST;
 if (emulatorHost) {
-  console.log(`[Seed] Target: Firestore EMULATOR at ${emulatorHost} (project "${env.projectId || 'nearby-objects-local'}")`);
+  console.log(`[Seed] Target: Firestore EMULATOR at ${emulatorHost} (project "${env.projectId || 'radius-local'}")`);
 } else if (env.projectId.startsWith('demo-')) {
   console.error(
     `[Seed] Project "${env.projectId}" is emulator-only but FIRESTORE_EMULATOR_HOST is not set. ` +
@@ -55,7 +55,7 @@ if (emulatorHost) {
 
 initFirebase();
 const db = getDb();
-const SEED_TAG = 'seed:nearby-objects-demo';
+const SEED_TAG = 'seed:radius-demo';
 
 /** Check-in code of the always-live demo event. */
 const LIVE_EVENT_CODE = 'NEARBY';
@@ -1381,7 +1381,7 @@ async function seedProfiles(
     const profile: Record<string, unknown> = {
       uid: person.id,
       displayName: person.name,
-      email: `${person.id}@nearby-events.demo`,
+      email: `${person.id}@radius.demo`,
       photoURL: null,
       bio: person.bio,
       neighborhood: person.neighborhood,

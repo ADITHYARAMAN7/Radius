@@ -24,7 +24,7 @@ services:
       NODE_ENV: production
       PORT: 8080
       SERVE_STATIC: 'true'
-      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-nearby-objects-local}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-radius-local}
       # Talk to the emulator in the sibling container rather than real Firestore.
       FIRESTORE_EMULATOR_HOST: firestore:8081
       MAINTENANCE_TOKEN: ${MAINTENANCE_TOKEN:-local-dev-token}
@@ -42,7 +42,7 @@ services:
       sh -c "apk add --no-cache openjdk17-jre-headless &&
              npm i -g firebase-tools@13 &&
              firebase emulators:start --only firestore
-               --project ${GCP_PROJECT_ID:-nearby-objects-local}"
+               --project ${GCP_PROJECT_ID:-radius-local}"
     environment:
       FIREBASE_EMULATORS_PATH: /work/.cache
     ports:

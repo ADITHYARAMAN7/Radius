@@ -1,4 +1,4 @@
-# Nearby-Events 📍
+# Radius 📍
 
 > **Cognizant GCP Hackathon — Use Case 5: Local Event Bulletin Board**  
 > *A high-performance, real-time, AI-assisted digital community platform built on Google Cloud Platform and Firebase.*
@@ -9,13 +9,13 @@
 [![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**🌐 Live on Google Cloud Run:** https://nearby-events-x2gneiue7a-el.a.run.app
+**🌐 Live on Google Cloud Run:** https://radius-x2gneiue7a-el.a.run.app
 
 ---
 
 ## 📌 Overview
 
-**Nearby-Events** is a modern, cloud-native digital community bulletin board designed to help local residents discover, post, share, and RSVP to neighborhood events, garage sales, sports games, workshops, and meetups.
+**Radius** is a modern, cloud-native digital community bulletin board designed to help local residents discover, post, share, and RSVP to neighborhood events, garage sales, sports games, workshops, and meetups.
 
 It replaces the fragmentation and clutter of physical corkboards and generic social media feeds with a hyper-local, real-time, and AI-enhanced experience powered by **Google Cloud Run**, **Cloud Firestore**, **Google Cloud Storage**, **Gemini** (default `gemini-3.5-flash-lite`, via the Gemini API or Vertex AI), **Firebase Authentication** and **Google Maps Platform**.
 
@@ -65,7 +65,7 @@ It replaces the fragmentation and clutter of physical corkboards and generic soc
 
 ## 🏛️ System Architecture
 
-![Nearby-Events Architecture](docs/architecture-diagram.svg)
+![Radius Architecture](docs/architecture-diagram.svg)
 
 ### Google Cloud Infrastructure & Service Integration
 
@@ -85,7 +85,7 @@ For full architectural specifications, see [docs/architecture-diagram.md](docs/a
 ## 📂 Project Directory Structure
 
 ```
-Nearby-Events/
+Radius/
 ├── backend/                      # Express + TypeScript API Server (Cloud Run target)
 │   ├── src/
 │   │   ├── config/               # Firebase Admin, GCP environment & logger configs
@@ -165,8 +165,8 @@ To use a real Google Cloud project instead, follow steps 2–4 below and run `np
 
 ```bash
 # Clone repository
-git clone https://github.com/kanishmanickam/Nearby-Events.git
-cd Nearby-Events
+git clone https://github.com/kanishmanickam/Radius.git
+cd Radius
 
 # Install dependencies for root, backend, and frontend
 npm run install:all
@@ -248,7 +248,7 @@ npm run dev:api
 npm run dev:web
 ```
 
-Open `http://localhost:5173` in your browser to experience **Nearby-Events**!
+Open `http://localhost:5173` in your browser to experience **Radius**!
 
 ---
 

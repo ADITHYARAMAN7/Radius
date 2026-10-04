@@ -1,4 +1,4 @@
-# Nearby-Events — build and deploy to Cloud Run from Windows PowerShell.
+# Radius — build and deploy to Cloud Run from Windows PowerShell.
 #
 #   .\scripts\deploy.ps1
 #
@@ -7,9 +7,9 @@
 # Gemini runs through Vertex AI (no key), MAINTENANCE_TOKEN comes from Secret Manager.
 
 param(
-  [string]$Project = 'nearby-events-510418',
+  [string]$Project = 'radius-510418',
   [string]$Region = 'asia-south1',
-  [string]$Service = 'nearby-events',
+  [string]$Service = 'radius',
   [string]$VertexLocation = 'global'
 )
 

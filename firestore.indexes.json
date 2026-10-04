@@ -1,6 +1,6 @@
 {
   "//": [
-    "Composite indexes Nearby-objects needs. Firestore creates single-field indexes",
+    "Composite indexes Radius needs. Firestore creates single-field indexes",
     "automatically; these are the multi-field combinations the Explore query builds.",
     "",
     "The query pipeline pushes `status` plus ONE equality filter (whichever of category,",

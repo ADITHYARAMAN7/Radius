@@ -8,31 +8,32 @@
    * opacity modifiers to any of them.
    */
   :root {
-    --bg: 220 33% 98%;
-    --surface: 0 0% 100%;
-    --surface-raised: 0 0% 100%;
-    --surface-sunken: 220 20% 96%;
-    --border: 220 16% 90%;
-    --border-strong: 220 14% 82%;
+    /* Light Theme - Clean, Elegant, Premium */
+    --bg: 210 20% 98%; /* Light gray background */
+    --surface: 0 0% 100%; /* Pure white surfaces */
+    --surface-raised: 210 16% 96%;
+    --surface-sunken: 210 20% 94%;
+    --border: 214 15% 90%;
+    --border-strong: 214 20% 80%;
 
-    --ink: 222 38% 12%;
-    --ink-soft: 220 12% 38%;
-    --ink-muted: 220 10% 52%;
+    --ink: 215 30% 15%; /* Deep navy text */
+    --ink-soft: 215 18% 36%;
+    --ink-muted: 215 16% 52%;
 
-    --brand: 243 70% 56%;
-    --brand-hover: 243 68% 48%;
-    --brand-soft: 243 82% 96%;
-    --brand-ink: 243 62% 38%;
+    --brand: 176 60% 45%; 
+    --brand-hover: 176 65% 40%;
+    --brand-soft: 176 60% 92%;
+    --brand-ink: 177 56% 28%;
 
-    --accent: 170 68% 38%;
-    --accent-soft: 170 60% 94%;
-    --accent-ink: 173 70% 26%;
+    --accent: 198 80% 50%; 
+    --accent-soft: 198 80% 94%;
+    --accent-ink: 198 76% 24%;
 
-    --success: 152 58% 38%;
-    --success-soft: 150 60% 94%;
-    --success-ink: 155 62% 24%;
+    --success: 152 65% 38%;
+    --success-soft: 152 60% 94%;
+    --success-ink: 152 62% 24%;
 
-    --danger: 0 72% 50%;
+    --danger: 0 75% 50%;
     --danger-soft: 0 85% 96%;
     --danger-ink: 0 66% 38%;
 
@@ -40,35 +41,36 @@
     --warning-soft: 38 92% 94%;
     --warning-ink: 28 76% 32%;
 
-    --shadow: 222 44% 20%;
+    --shadow: 215 20% 80%; /* Light subtle shadow */
 
     color-scheme: light;
   }
 
   [data-theme='dark'] {
-    --bg: 224 32% 7%;
-    --surface: 223 28% 11%;
-    --surface-raised: 223 25% 14%;
-    --surface-sunken: 224 30% 9%;
-    --border: 222 18% 22%;
-    --border-strong: 222 16% 32%;
+    /* Dark Theme - Premium Navy/Dark Slate */
+    --bg: 215 30% 9%; /* Deep premium navy background */
+    --surface: 215 25% 13%; /* Slightly lighter navy for cards */
+    --surface-raised: 215 24% 17%;
+    --surface-sunken: 215 35% 7%;
+    --border: 215 20% 22%;
+    --border-strong: 215 20% 30%;
 
-    --ink: 210 34% 96%;
-    --ink-soft: 216 16% 72%;
-    --ink-muted: 216 13% 60%;
+    --ink: 210 20% 96%; /* Crisp white text */
+    --ink-soft: 210 18% 70%;
+    --ink-muted: 210 14% 58%;
 
-    --brand: 245 85% 70%;
-    --brand-hover: 245 88% 77%;
-    --brand-soft: 245 42% 20%;
-    --brand-ink: 245 90% 84%;
+    --brand: 176 60% 45%;
+    --brand-hover: 176 65% 55%;
+    --brand-soft: 176 40% 18%;
+    --brand-ink: 176 50% 86%;
 
-    --accent: 168 62% 52%;
-    --accent-soft: 172 40% 17%;
-    --accent-ink: 168 70% 74%;
+    --accent: 198 80% 50%;
+    --accent-soft: 198 46% 16%;
+    --accent-ink: 198 72% 80%;
 
-    --success: 150 54% 52%;
+    --success: 152 54% 52%;
     --success-soft: 152 38% 16%;
-    --success-ink: 150 62% 76%;
+    --success-ink: 152 62% 76%;
 
     --danger: 0 76% 64%;
     --danger-soft: 0 42% 20%;
@@ -78,7 +80,7 @@
     --warning-soft: 32 46% 18%;
     --warning-ink: 38 92% 80%;
 
-    --shadow: 224 60% 2%;
+    --shadow: 215 40% 4%; /* Deep dark shadow */
 
     color-scheme: dark;
   }

@@ -1,4 +1,4 @@
-# Security Review — Nearby-Events
+# Security Review — Radius
 
 > **Review date:** October 2026  
 > **Scope:** Full stack — Express/Node backend, React/Vite frontend, Firestore, Cloud Storage  

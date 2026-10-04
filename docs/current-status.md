@@ -1,13 +1,13 @@
-# Current status — Nearby-Events
+# Current status — Radius
 
 > Cognizant NPN Hackathon · Use Case 5 · updated 3 Oct 2026.
 > Full write-up: [`cognizant-hackathon-report.md`](cognizant-hackathon-report.md).
 
 ## Live
 
-- **App:** https://nearby-events-x2gneiue7a-el.a.run.app
+- **App:** https://radius-x2gneiue7a-el.a.run.app
 - **Health:** `/api/health` reports Firestore connected, Cloud Storage, Gemini and scheduled expiry configured
-- **Project:** `nearby-events-510418` (free trial, $25 budget alert), Cloud Run `nearby-events`, `asia-south1`
+- **Project:** `radius-510418` (free trial, $25 budget alert), Cloud Run `radius`, `asia-south1`
 
 ## Brief requirements
 

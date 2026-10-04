@@ -114,7 +114,7 @@ function validate(form: FormState, isEdit: boolean): Errors {
   }
 
   if (form.location.trim().length < 3) errors.location = 'Name the venue or meeting point.';
-  if (form.address.trim().length < 5) errors.address = 'Add a street address so people can find it.';
+  // Google Maps link / address is optional
   if (form.neighborhood.trim().length < 2) errors.neighborhood = 'Add the neighbourhood.';
   if (form.city.trim().length < 2) errors.city = 'Add the city.';
 
@@ -423,9 +423,7 @@ function ImageField({
   };
 
   return (
-    <div className="space-y-1.5">
-      <span className="text-sm font-semibold text-ink">Event image</span>
-
+    <div className="w-full">
       {imageUrl ? (
         <div className="relative overflow-hidden rounded-xl ring-1 ring-border">
           <img src={imageUrl} alt="Your event image" className="aspect-[16/9] w-full object-cover" />
@@ -471,27 +469,27 @@ function ImageField({
             if (file) void upload(file);
           }}
           className={cn(
-            'flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors',
-            dragging ? 'border-brand bg-brand-soft' : 'border-border bg-surface-sunken hover:border-border-strong',
+            'flex w-full items-center gap-3 transition-colors text-left',
+            dragging ? 'opacity-70' : '',
             (disabled || available === false) && 'cursor-not-allowed opacity-60',
           )}
         >
           {uploading ? (
             <>
               <Loader2 className="h-6 w-6 animate-spin text-brand" aria-hidden="true" />
-              <span className="text-sm font-semibold text-ink">Uploading to Cloud Storage…</span>
+              <span className="text-sm font-semibold text-ink">Uploading...</span>
             </>
           ) : (
             <>
-              <ImagePlus className="h-6 w-6 text-ink-muted" aria-hidden="true" />
-              <span className="text-sm font-semibold text-ink">
-                {available === false ? 'Image uploads are not configured' : 'Add a photo'}
-              </span>
-              <span className="text-xs text-ink-muted">
-                {available === false
-                  ? 'Set GCS_BUCKET on the API to switch this on. Events work fine without a photo.'
-                  : 'Drag one here or click to choose · JPG, PNG, WebP or GIF up to 5 MB'}
-              </span>
+              <ImagePlus className="h-6 w-6 text-ink" aria-hidden="true" />
+              <div>
+                <span className="text-sm font-semibold text-ink block">
+                  {available === false ? 'Image uploads are not configured' : 'Add Cover Photo'}
+                </span>
+                <span className="text-xs text-ink-muted block mt-0.5">
+                  Click or drag & drop · Max 5 MB
+                </span>
+              </div>
             </>
           )}
         </button>
@@ -792,50 +790,24 @@ export function EventForm({
           className="flex animate-fade-up gap-3 rounded-xl bg-danger-soft p-4 ring-1 ring-danger/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger"
         >
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-danger" aria-hidden="true" />
-
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-danger-ink">
               {isEdit ? 'Your changes were not saved' : 'Your event was not published'}
             </p>
             <p className="mt-0.5 text-sm leading-relaxed text-danger-ink/90">{submitError}</p>
-
-            {Object.keys(errors).length > 0 && (
-              <ul className="mt-2 space-y-1 text-sm text-danger-ink/90">
-                {Object.entries(errors)
-                  .filter(([, message]) => Boolean(message))
-                  .map(([field, message]) => (
-                    <li key={field}>
-                      {/* Jumps straight to the offending input. */}
-                      <a
-                        href={`#field-${field}`}
-                        onClick={(clickEvent) => {
-                          clickEvent.preventDefault();
-                          document.getElementById(`field-${field}`)?.focus();
-                        }}
-                        className="underline underline-offset-2 hover:no-underline"
-                      >
-                        {message}
-                      </a>
-                    </li>
-                  ))}
-              </ul>
-            )}
+            <button
+              type="button"
+              onClick={() => setSubmitError(null)}
+              className="mt-2 text-sm font-semibold underline text-danger-ink/80 hover:text-danger-ink"
+            >
+              Dismiss
+            </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setSubmitError(null)}
-            className="-m-1 h-7 w-7 shrink-0 rounded-lg text-danger-ink/70 transition-colors hover:bg-danger/10 hover:text-danger-ink"
-            aria-label="Dismiss this error"
-          >
-            <X className="mx-auto h-4 w-4" aria-hidden="true" />
-          </button>
         </div>
       )}
 
       {!isEdit && aiChecked && (
         <SnapPoster
-          // Reading a poster needs Gemini itself; the rule-based fallback cannot, and must not guess.
           available={aiAvailable && aiProvider === 'gemini'}
           onExtracted={handleExtracted}
           onUsePoster={(image) =>
@@ -845,107 +817,73 @@ export function EventForm({
       )}
 
       {pendingSnap && (
-        <Panel className="animate-fade-up space-y-3 bg-warning-soft/60 ring-warning/25" role="alertdialog" aria-label="Replace your entries?">
+        <Panel className="animate-fade-up space-y-3 bg-warning-soft/60 ring-warning/25" role="alertdialog">
           <p className="text-sm font-bold text-ink">The poster has values for fields you already filled in</p>
-          <p className="text-sm text-ink-soft">
-            {pendingSnap.conflicts.map((key) => SNAP_FIELD_LABELS[key]).join(', ')}. Replace them with what the AI read, or
-            keep yours and only fill the empty fields?
-          </p>
           <div className="flex flex-wrap gap-2">
             <Button variant="primary" onClick={() => applySnap(pendingSnap.result, true)}>
               Replace with AI values
             </Button>
             <Button variant="secondary" onClick={() => applySnap(pendingSnap.result, false)}>
-              Keep mine, fill empty fields
+              Keep mine
             </Button>
-            <Button variant="ghost" onClick={() => setPendingSnap(null)}>
-              Cancel
-            </Button>
+            <Button variant="ghost" onClick={() => setPendingSnap(null)}>Cancel</Button>
           </div>
         </Panel>
       )}
 
-      {snapWarnings.length > 0 && (
-        <div role="status" className="flex animate-fade-up gap-3 rounded-xl bg-warning-soft p-4 ring-1 ring-warning/25">
-          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning-ink" aria-hidden="true" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-warning-ink">Please check before publishing</p>
-            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm text-warning-ink/90">
-              {snapWarnings.map((warning) => (
-                <li key={warning}>{warning}</li>
-              ))}
-            </ul>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSnapWarnings([])}
-            className="-m-1 h-7 w-7 shrink-0 rounded-lg text-warning-ink/70 transition-colors hover:bg-warning/10 hover:text-warning-ink"
-            aria-label="Dismiss these warnings"
-          >
-            <X className="mx-auto h-4 w-4" aria-hidden="true" />
-          </button>
-        </div>
-      )}
-
       <AiPanel form={form} onApply={applyAi} available={aiAvailable} provider={aiProvider} />
 
-      {/* ------------------------------------------------------ the basics */}
-      <Card className="space-y-5 p-5 sm:p-6">
-        <h2 className="font-display text-base font-bold text-ink">The basics</h2>
+      <div className="space-y-6">
+        {/* Cover Photo */}
+        <div className="border border-dashed border-border rounded-xl p-4">
+          <ImageField
+            imageUrl={form.imageUrl}
+            disabled={submitting}
+            onChange={(next) =>
+              setForm((current) => ({ ...current, imageUrl: next.imageUrl, imagePath: next.imagePath }))
+            }
+          />
+        </div>
 
+        {/* Title */}
         <Input
           id="field-title"
-          label="Event title"
+          label="Event Title *"
           required
           value={form.title}
           onChange={(changeEvent) => set('title', changeEvent.target.value)}
           error={errors.title}
           {...aiProps('title')}
-          placeholder="Sunday morning football at VOC Grounds"
+          placeholder="Weekend Yoga Session"
           maxLength={120}
-          trailing={
-            <span
-              className={cn(
-                'text-xs tabular-nums',
-                titleCount > 110 ? 'font-semibold text-warning-ink' : 'text-ink-muted',
-              )}
-            >
-              {titleCount}/120
-            </span>
-          }
         />
 
-        <Textarea
-          id="field-description"
-          label="Description"
-          required
-          rows={7}
-          value={form.description}
-          onChange={(changeEvent) => set('description', changeEvent.target.value)}
-          error={errors.description}
-          {...aiProps(
-            'description',
-            'What happens, who it suits, and anything people should bring. Blank lines start a new paragraph.',
-          )}
-          placeholder="Our weekly seven-a-side game is open to anyone who turns up…"
-          maxLength={5000}
-          trailing={
-            <span className="text-xs tabular-nums text-ink-muted">{descriptionCount}/5000</span>
-          }
-        />
-
-        <Input
-          id="field-summary"
-          label="One-line summary"
-          value={form.summary}
-          onChange={(changeEvent) => set('summary', changeEvent.target.value)}
-          error={errors.summary}
-          hint="Shown on cards and previews. Left empty, we take the opening of your description."
-          placeholder="Open seven-a-side football, teams picked on the spot, all abilities welcome."
-          maxLength={200}
-        />
-
+        {/* Date & Category */}
         <div className="grid gap-5 sm:grid-cols-2">
+          <Input
+            id="field-datetime"
+            label="Date & Time *"
+            type="datetime-local"
+            required
+            value={form.date && form.startTime ? `${form.date}T${form.startTime}` : ''}
+            min={isEdit ? undefined : `${todayAsInputValue()}T00:00`}
+            onChange={(changeEvent) => {
+              const val = changeEvent.target.value;
+              if (val) {
+                const [d, t] = val.split('T');
+                set('date', d);
+                set('startTime', t);
+                const computedEndTime = addTwoHours(t);
+                if (computedEndTime) set('endTime', computedEndTime);
+              } else {
+                set('date', '');
+                set('startTime', '');
+                set('endTime', '');
+              }
+            }}
+            error={errors.date || errors.startTime}
+          />
+
           <Select
             id="field-category"
             label="Category"
@@ -962,194 +900,85 @@ export function EventForm({
               </option>
             ))}
           </Select>
-
-          <Input
-            id="field-tagsText"
-            label="Tags"
-            value={form.tagsText}
-            onChange={(changeEvent) => set('tagsText', changeEvent.target.value)}
-            error={errors.tagsText}
-            hint="Comma separated, up to 10."
-            placeholder="football, weekly, beginners welcome"
-          />
         </div>
 
-        {form.tagsText.trim() && (
-          <div className="flex flex-wrap gap-1.5">
-            {form.tagsText
-              .split(',')
-              .map((tag) => tag.trim())
-              .filter(Boolean)
-              .slice(0, 10)
-              .map((tag, index) => (
-                <Badge key={`${tag}-${index}`} tone="brand" size="sm">
-                  #{tag.toLowerCase().replace(/^#/, '')}
-                </Badge>
-              ))}
-          </div>
-        )}
-      </Card>
-
-      {/* --------------------------------------------------- when and where */}
-      <Card className="space-y-5 p-5 sm:p-6">
-        <h2 className="font-display text-base font-bold text-ink">When</h2>
-
-        <div className="grid gap-5 sm:grid-cols-3">
-          <Input
-            id="field-date"
-            label="Date"
-            type="date"
-            required
-            value={form.date}
-            min={isEdit ? undefined : todayAsInputValue()}
-            onChange={(changeEvent) => set('date', changeEvent.target.value)}
-            error={errors.date}
-            {...aiProps('date')}
-          />
-
-          <Input
-            id="field-startTime"
-            label="Start time"
-            type="time"
-            required
-            value={form.startTime}
-            onChange={(changeEvent) => set('startTime', changeEvent.target.value)}
-            error={errors.startTime}
-            {...aiProps('startTime')}
-          />
-
-          <Input
-            id="field-endTime"
-            label="End time"
-            type="time"
-            required
-            value={form.endTime}
-            onChange={(changeEvent) => set('endTime', changeEvent.target.value)}
-            error={errors.endTime}
-            {...aiProps('endTime')}
-          />
-        </div>
-      </Card>
-
-      <Card className="space-y-5 p-5 sm:p-6">
-        <h2 className="font-display text-base font-bold text-ink">Where</h2>
-
+        {/* Location */}
         <Input
           id="field-location"
-          label="Venue or meeting point"
+          label="Location *"
           required
           value={form.location}
           onChange={(changeEvent) => set('location', changeEvent.target.value)}
           error={errors.location}
           {...aiProps('location')}
-          placeholder="VOC Park Grounds"
+          placeholder="VOC Park, Coimbatore"
         />
 
-        {placesMode ? (
-          <PlaceAutocomplete
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium italic text-ink-muted shrink-0">or</span>
+          <Input
             id="field-address"
-            label="Street address"
-            required
-            initialValue={form.address}
-            error={errors.address}
-            hint={
-              aiMarks.address
-                ? AI_HINTS[aiMarks.address]
-                : 'Start typing and pick a suggestion: it fills the neighbourhood, city and map pin for you.'
-            }
-            highlight={Boolean(aiMarks.address)}
-            onPick={applyPlace}
-            onType={(text) => set('address', text)}
-            onUnavailable={() => setPlacesMode(false)}
-          />
-        ) : (
-          // No Google key: OpenStreetMap suggestions as you type, same fill-in behaviour.
-          <AddressSuggest
-            id="field-address"
-            label="Street address"
-            required
+            className="flex-1"
             value={form.address}
-            onChange={(text) => set('address', text)}
-            onPick={applyPlace}
+            onChange={(changeEvent) => set('address', changeEvent.target.value)}
             error={errors.address}
-            {...aiProps(
-              'address',
-              'Start typing a place or street and pick a suggestion: it fills the neighbourhood, city and map pin.',
-            )}
-            placeholder="VOC Park, Dr Nanjappa Road, Gandhipuram, Coimbatore 641018"
-          />
-        )}
-
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Input
-            id="field-neighborhood"
-            label="Neighbourhood"
-            required
-            value={form.neighborhood}
-            onChange={(changeEvent) => set('neighborhood', changeEvent.target.value)}
-            error={errors.neighborhood}
-            {...aiProps('neighborhood', 'This is what people filter and search by.')}
-            placeholder="Gandhipuram"
-          />
-
-          <Input
-            id="field-city"
-            label="City"
-            required
-            value={form.city}
-            onChange={(changeEvent) => set('city', changeEvent.target.value)}
-            error={errors.city}
-            {...aiProps('city')}
-            placeholder="Coimbatore"
+            {...aiProps('address')}
+            placeholder="Paste a Google Maps link..."
           />
         </div>
 
-        <EventLocationPin
-          address={form.address}
-          neighborhood={form.neighborhood}
-          city={form.city}
-          latitude={form.latitude}
-          longitude={form.longitude}
-          errors={{ latitude: errors.latitude, longitude: errors.longitude }}
-          onChange={(latitude, longitude) => {
-            set('latitude', latitude);
-            set('longitude', longitude);
-          }}
+        {/* Neighborhood */}
+        <Input
+          id="field-neighborhood"
+          label="Neighborhood"
+          required
+          value={form.neighborhood}
+          onChange={(changeEvent) => set('neighborhood', changeEvent.target.value)}
+          error={errors.neighborhood}
+          {...aiProps('neighborhood')}
+          placeholder="RS Puram"
         />
-      </Card>
 
-      {/* ------------------------------------------------------------ image */}
-      <Card className="p-5 sm:p-6">
-        <ImageField
-          imageUrl={form.imageUrl}
-          disabled={submitting}
-          onChange={(next) =>
-            setForm((current) => ({ ...current, imageUrl: next.imageUrl, imagePath: next.imagePath }))
-          }
+        {/* Description */}
+        <Textarea
+          id="field-description"
+          label="Description"
+          required
+          rows={4}
+          value={form.description}
+          onChange={(changeEvent) => set('description', changeEvent.target.value)}
+          error={errors.description}
+          {...aiProps('description')}
+          placeholder="Tell people what to expect..."
+          maxLength={5000}
         />
-      </Card>
 
-      {/*
-        Sticky so the primary action stays reachable in a long form. `scroll-mt` plus the
-        trailing spacer below stop the bar from permanently covering the last card.
-      */}
-      <div className="sticky bottom-20 z-20 flex flex-col-reverse gap-2 rounded-panel bg-surface/95 p-4 shadow-lg ring-1 ring-border backdrop-blur sm:flex-row sm:justify-end md:bottom-4">
-        <Button type="button" variant="secondary" onClick={() => navigate(-1)} disabled={submitting}>
-          Cancel
-        </Button>
+        {/* Hidden inputs to make validation happy for unused fields */}
+        <input type="hidden" id="field-summary" name="summary" value={form.summary} />
+        <input type="hidden" id="field-city" name="city" value={form.city} />
 
-        <Button
-          type="submit"
-          variant="primary"
-          loading={submitting}
-          loadingLabel={isEdit ? 'Saving' : 'Publishing'}
-        >
-          {isEdit ? 'Save changes' : 'Publish event'}
-        </Button>
+        <div className="flex items-center justify-end gap-3 pt-4 mt-6 border-t border-border">
+          <Button 
+            type="button" 
+            variant="ghost" 
+            onClick={() => navigate(-1)} 
+            disabled={submitting}
+          >
+            Cancel
+          </Button>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="inline-flex items-center gap-2 rounded-full bg-[#00C7BE] px-6 py-2.5 font-semibold text-white shadow-lg shadow-[#00C7BE]/25 transition-all hover:scale-[1.02] hover:shadow-[#00C7BE]/40 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
+          >
+            <Check className="h-5 w-5" aria-hidden="true" />
+            {submitting 
+              ? (isEdit ? 'Saving...' : 'Publishing...') 
+              : (isEdit ? 'Save changes' : 'Publish Event')}
+          </button>
+        </div>
       </div>
-
-      {/* Lets the final card scroll clear of the sticky bar instead of sitting under it. */}
-      <div aria-hidden="true" className="h-2" />
     </form>
   );
 }

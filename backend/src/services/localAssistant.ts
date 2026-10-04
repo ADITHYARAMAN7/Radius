@@ -49,6 +49,16 @@ const CATEGORY_KEYWORDS: Record<Exclude<Category, 'Other'>, string[]> = {
     'web', 'app', 'startup', 'data', 'python', 'javascript', 'gcp', 'firebase', 'iot',
     'electronics', 'cyber',
   ],
+  Art: [
+    'art', 'painting', 'drawing', 'sketch', 'exhibition', 'gallery', 'museum', 'craft',
+    'crafts', 'pottery', 'sculpture', 'design', 'creative', 'photography', 'photo',
+    'theatre', 'theater', 'acting', 'drama', 'play', 'comedy', 'standup', 'poetry',
+  ],
+  Health: [
+    'health', 'wellness', 'fitness', 'meditation', 'yoga', 'mental health', 'therapy',
+    'healing', 'clinic', 'medical', 'blood donation', 'checkup', 'diet', 'nutrition',
+    'mindfulness', 'wellbeing', 'well-being',
+  ],
 };
 
 /** A sentence or two of practical, category-level guidance — true of any such event. */
@@ -67,6 +77,10 @@ const CATEGORY_GUIDANCE: Record<Category, string> = {
     'No prior experience is needed. Bring a notebook, and feel free to ask questions as you go.',
   Technology:
     'Beginners and experienced builders are both welcome. Bring a laptop if you have one, and your curiosity either way.',
+  Art:
+    'No prior experience is necessary, just bring your creativity and an open mind.',
+  Health:
+    'Wear comfortable clothing and bring water. Listen to your body and go at your own pace.',
   Other:
     'Everyone is welcome. Come along, bring a friend, and say hello to the organiser when you arrive.',
 };
@@ -79,6 +93,8 @@ const CATEGORY_TAGS: Record<Category, string[]> = {
   Community: ['community', 'neighbours', 'volunteer'],
   Education: ['learning', 'workshop', 'beginners welcome'],
   Technology: ['tech', 'hands-on', 'meetup'],
+  Art: ['art', 'creative', 'exhibition'],
+  Health: ['wellness', 'health', 'mindfulness'],
   Other: ['local', 'community'],
 };
 

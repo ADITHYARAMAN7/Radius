@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import {
+  Activity,
   BarChart3,
   Bookmark,
   CalendarHeart,
@@ -9,6 +10,7 @@ import {
   LogOut,
   MapPin,
   Menu,
+  MessageSquare,
   Moon,
   Sun,
   Trophy,
@@ -22,10 +24,10 @@ import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
 
 const NAV_LINKS = [
-  { to: '/explore', label: 'Explore', icon: Compass },
-  { to: '/my-events', label: 'My events', icon: CalendarHeart, protected: true },
-  { to: '/community', label: 'Community', icon: Trophy },
-  { to: '/insights', label: 'Insights', icon: BarChart3 },
+  { to: '/', label: 'Board' },
+  { to: '/ask', label: 'Ask the Board' },
+  { to: '/pulse', label: 'Pulse' },
+  { to: '/community', label: 'Community' },
 ];
 
 export function Navbar({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onToggleTheme: () => void }) {
@@ -96,24 +98,25 @@ export function Navbar({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onTo
           {/* ------------------------------------------------------- wordmark */}
           <Link
             to="/"
-            className="flex shrink-0 items-center gap-2.5 rounded-lg font-display text-[1.0625rem] font-extrabold tracking-tight text-ink"
+            className="flex shrink-0 items-center gap-2.5 rounded-lg font-display text-[1.15rem] font-extrabold tracking-tight text-ink"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white shadow-sm">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md">
               <MapPin className="h-[1.125rem] w-[1.125rem]" aria-hidden="true" />
             </span>
-            Nearby-Events
+            Radius
           </Link>
 
           {/* ------------------------------------------------- desktop links */}
-          <div className="hidden items-center gap-1 md:flex">
-            {visibleLinks.map((link) => (
+          <div className="hidden items-center gap-4 md:flex ml-8">
+            {NAV_LINKS.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
+                end
                 className={({ isActive }) =>
                   cn(
-                    'rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors',
-                    isActive ? 'bg-brand-soft text-brand-ink' : 'text-ink-soft hover:bg-surface-sunken hover:text-ink',
+                    'rounded-full px-5 py-1.5 text-sm font-semibold transition-colors',
+                    isActive ? 'bg-brand-soft text-brand-ink' : 'text-ink-muted hover:text-ink',
                   )
                 }
               >
@@ -128,19 +131,20 @@ export function Navbar({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onTo
               variant="ghost"
               size="icon"
               onClick={onToggleTheme}
+              className="text-ink-muted hover:text-ink hover:bg-transparent"
               aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
               title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
             >
               {theme === 'dark' ? (
-                <Sun className="h-[1.125rem] w-[1.125rem]" aria-hidden="true" />
+                <Sun className="h-5 w-5" aria-hidden="true" />
               ) : (
-                <Moon className="h-[1.125rem] w-[1.125rem]" aria-hidden="true" />
+                <Moon className="h-5 w-5" aria-hidden="true" />
               )}
             </Button>
 
-            <ButtonLink to="/events/new" variant="primary" size="sm" className="hidden sm:inline-flex">
+            <ButtonLink to="/events/new" variant="primary" size="sm" className="hidden sm:inline-flex rounded-full px-5 bg-brand hover:bg-brand-hover text-white border-0">
               <CalendarPlus className="h-4 w-4" aria-hidden="true" />
-              Create event
+              Post Event
             </ButtonLink>
 
             {/*
@@ -274,7 +278,9 @@ export function Navbar({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onTo
               )}
 
               {[
-                { to: '/explore', label: 'Explore events', icon: Compass },
+                { to: '/', label: 'Board', icon: Compass },
+                { to: '/ask', label: 'Ask the Board', icon: MessageSquare },
+                { to: '/pulse', label: 'Pulse', icon: Activity },
                 { to: '/events/new', label: 'Create event', icon: CalendarPlus },
                 ...(user
                   ? [
@@ -284,7 +290,6 @@ export function Navbar({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onTo
                     ]
                   : []),
                 { to: '/community', label: 'Community', icon: Trophy },
-                { to: '/insights', label: 'Insights', icon: BarChart3 },
               ].map((item) => (
                 <NavLink
                   key={item.to}

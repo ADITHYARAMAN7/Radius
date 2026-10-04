@@ -70,12 +70,12 @@ export function RecommendedSection() {
                 <div>
                     <h2
                         id="recommended-heading"
-                        className="flex items-center gap-2 text-display-md"
+                        className="flex items-center gap-2 text-display-md text-white"
                     >
                         <Sparkles className="h-6 w-6 text-brand" aria-hidden="true" />
                         Recommended for You
                     </h2>
-                    <p className="mt-1.5 text-sm text-ink-soft">
+                    <p className="mt-1.5 text-sm text-gray-300">
                         Upcoming events ranked by distance, interests, and community engagement.
                     </p>
                 </div>

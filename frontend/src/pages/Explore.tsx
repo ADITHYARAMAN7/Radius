@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CalendarDays, ChevronLeft, ChevronRight, LayoutGrid, Map as MapIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { SegmentedControl } from '@/components/ui/Primitives';
 import { EventCard } from '@/components/events/EventCard';
 import { EventFilters } from '@/components/events/EventFilters';
-import { EventMap } from '@/components/events/EventMap';
-import { CalendarView, parseDayKey, toDayKey } from '@/components/events/CalendarView';
 import { EventGridSkeleton, ErrorState, NoEventsFound } from '@/components/common/States';
 import { useDebounced, useEvents } from '@/hooks/useEvents';
 import { useRsvp } from '@/hooks/useRsvp';
@@ -81,8 +78,6 @@ function readFiltersFromUrl(params: URLSearchParams): EventFiltersState {
 function writeFiltersToUrl(
   filters: EventFiltersState,
   page: number,
-  view: ViewMode,
-  day: string,
 ): URLSearchParams {
   const params = new URLSearchParams();
 
@@ -93,9 +88,6 @@ function writeFiltersToUrl(
   if (filters.date !== 'upcoming') params.set('date', filters.date);
   if (filters.sort !== 'soonest') params.set('sort', filters.sort);
   if (page > 1) params.set('page', String(page));
-  if (view !== 'list') params.set('view', view);
-  // `date` is already the Today/Weekend filter, so the calendar's selected day is `day`.
-  if (view === 'calendar') params.set('day', day);
 
   // Rounded to ~11 m, which is plenty for a distance filter and keeps the URL from
   // carrying the user's exact position.
@@ -114,15 +106,6 @@ export default function Explore() {
 
   const [filters, setFilters] = useState<EventFiltersState>(() => readFiltersFromUrl(searchParams));
   const [page, setPage] = useState(() => Math.max(1, Number(searchParams.get('page')) || 1));
-  const [view, setView] = useState<ViewMode>(() => {
-    const raw = searchParams.get('view');
-    return raw === 'map' || raw === 'calendar' ? raw : 'list';
-  });
-  // Calendar's selected day (and so its month); an invalid ?day= falls back to today.
-  const [day, setDay] = useState(() => {
-    const parsed = parseDayKey(searchParams.get('day'));
-    return toDayKey(parsed ?? new Date());
-  });
   const [aiAvailable, setAiAvailable] = useState(false);
   const [aiProvider, setAiProvider] = useState<AiProvider>('local');
 
@@ -130,7 +113,7 @@ export default function Explore() {
   const debouncedSearch = useDebounced(filters.search, 350);
 
   useEffect(() => {
-    document.title = 'Explore events — Nearby-Events';
+    document.title = 'Explore events — Radius';
   }, []);
 
   useEffect(() => {
@@ -145,7 +128,7 @@ export default function Explore() {
 
   // Keep the URL in step with the controls, without stacking history entries per keystroke.
   useEffect(() => {
-    setSearchParams(writeFiltersToUrl({ ...filters, search: debouncedSearch }, page, view, day), {
+    setSearchParams(writeFiltersToUrl({ ...filters, search: debouncedSearch }, page), {
       replace: true,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -160,8 +143,6 @@ export default function Explore() {
     filters.lng,
     filters.radiusKm,
     page,
-    view,
-    day,
   ]);
 
   const query = useMemo(
@@ -176,10 +157,9 @@ export default function Explore() {
       lng: filters.lng,
       radiusKm: filters.radiusKm,
       page,
-      // Map view wants every pin in the result set, not one page of twelve.
-      pageSize: view === 'map' ? 60 : PAGE_SIZE,
+      pageSize: PAGE_SIZE,
     }),
-    [debouncedSearch, filters, page, view],
+    [debouncedSearch, filters, page],
   );
 
   // Still runs in calendar view: one small page keeps the filter bar's "N events" count
@@ -209,16 +189,17 @@ export default function Explore() {
   const totalPages = data?.totalPages ?? 1;
 
   return (
-    <div className="container-page py-8">
-      <header className="mb-6">
-        <h1 className="text-display-lg">Explore events</h1>
-        <p className="mt-2 max-w-2xl text-sm text-ink-soft sm:text-base">
-          Everything upcoming near you. Search by neighbourhood or city, narrow it down, and switch
-          to the map when you want to see what is closest.
-        </p>
-      </header>
-
-      <div className="rounded-panel bg-surface p-4 ring-1 ring-border sm:p-5">
+    <div className="container-page py-10 px-4">
+      <div className="mb-12 text-center">
+        <h1 className="text-display-xl lg:text-[4rem] font-serif font-extrabold tracking-tight">
+          <span className="text-ink">Discover What's</span>
+          <br />
+          <span className="bg-gradient-to-r from-brand to-[#D4CE70] bg-clip-text text-transparent">
+            Happening Nearby
+          </span>
+        </h1>
+      </div>
+      <div className="mb-10">
         <EventFilters
           filters={{ ...filters, search: filters.search }}
           onChange={onChangeFilters}
@@ -229,52 +210,15 @@ export default function Explore() {
           aiProvider={aiProvider}
         />
       </div>
-
-      <div className="mt-6 flex items-center justify-between gap-3">
-        <SegmentedControl<ViewMode>
-          ariaLabel="Choose how to view events"
-          value={view}
-          onChange={setView}
-          options={[
-            { value: 'list', label: 'List', icon: <LayoutGrid className="h-4 w-4" aria-hidden="true" /> },
-            { value: 'map', label: 'Map', icon: <MapIcon className="h-4 w-4" aria-hidden="true" /> },
-            {
-              value: 'calendar',
-              label: 'Calendar',
-              icon: <CalendarDays className="h-4 w-4" aria-hidden="true" />,
-            },
-          ]}
-        />
-
-        {refreshing && view !== 'calendar' && <span className="text-xs font-medium text-ink-muted">Updating…</span>}
-      </div>
-
-      <div className="mt-5">
-        {view === 'calendar' ? (
-          <>
-            <p className="mb-4 text-xs text-ink-muted">
-              The calendar uses the category, neighbourhood and city filters. Search, date and sort apply to the
-              list and map.
-            </p>
-            <CalendarView
-              day={day}
-              onDayChange={setDay}
-              category={filters.category}
-              neighborhood={filters.neighborhood}
-              city={filters.city}
-            />
-          </>
-        ) : error ? (
+      <div>
+        {error ? (
           <ErrorState error={error} onRetry={reload} />
         ) : loading ? (
           <EventGridSkeleton count={6} />
         ) : events.length === 0 ? (
           <NoEventsFound hasFilters={hasFilters} onClear={onReset} />
-        ) : view === 'map' ? (
-          <EventMap events={events} theme={theme} className="h-[32rem]" />
         ) : (
           <>
-            {/* Dim rather than unmount while refetching, so the page does not jump. */}
             <div
               className={cn(
                 'grid gap-5 transition-opacity duration-200 sm:grid-cols-2 xl:grid-cols-3',

@@ -5,6 +5,7 @@ import { capabilities, env } from '../config/env';
 import { getBucket } from '../config/firebase';
 import { logger } from '../config/logger';
 import { AppError } from '../middleware/error';
+import { moderateImage } from './visionService';
 
 const ALLOWED_MIME = new Map<string, string>([
   ['image/jpeg', '.jpg'],
@@ -137,6 +138,9 @@ export async function uploadEventImage(
   }
 
   const extension = detected.ext;
+
+  // Cloud Vision: check for inappropriate content before saving it anywhere
+  await moderateImage(file.buffer);
 
   // Path is derived server-side from the verified uid, so one user cannot write into
   // another user's folder by crafting a filename.

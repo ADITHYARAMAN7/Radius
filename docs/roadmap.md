@@ -1,4 +1,4 @@
-# Roadmap — Nearby-Events
+# Roadmap — Radius
 
 > Written for judges and for whoever picks this up next. Split into what genuinely works
 > today and what would have to happen before real neighbours could use it.

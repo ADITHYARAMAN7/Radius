@@ -13,6 +13,7 @@ import {
   RotateCcw,
   Trash2,
   Users,
+  Languages,
 } from 'lucide-react';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Avatar, Badge, Card, Panel, Separator } from '@/components/ui/Primitives';
@@ -164,6 +165,29 @@ export default function EventDetails() {
   const [cancelling, setCancelling] = useState(false);
   const [nonce, setNonce] = useState(0);
 
+  const [translatedData, setTranslatedData] = useState<{title: string, description: string} | null>(null);
+  const [translating, setTranslating] = useState(false);
+
+  const handleTranslate = async () => {
+    if (!event) return;
+    if (translatedData) {
+      setTranslatedData(null); // Toggle off
+      return;
+    }
+    setTranslating(true);
+    try {
+      const res = await fetch(`/api/events/${event.id}/translate?target=hi`);
+      if (res.ok) {
+        const data = await res.json();
+        setTranslatedData(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   // The organiser's QR code links here with ?checkin=CODE. Captured once, so the code can
   // be taken out of the address bar without losing it.
   const [checkInCode] = useState(() => searchParams.get('checkin') ?? '');
@@ -207,7 +231,7 @@ export default function EventDetails() {
   }, [id, user, initialising, nonce]);
 
   useEffect(() => {
-    document.title = event ? `${event.title} — Nearby-Events` : 'Event — Nearby-Events';
+    document.title = event ? `${event.title} — Radius` : 'Event — Radius';
   }, [event]);
 
   const applyRsvp = useCallback(
@@ -443,7 +467,19 @@ export default function EventDetails() {
               )}
             </div>
 
-            <h1 className="mt-3 text-display-lg">{event.title}</h1>
+            <div className="flex items-start justify-between gap-4 mt-3">
+              <h1 className="text-display-lg min-w-0 flex-1 break-words">
+                {translatedData ? translatedData.title : event.title}
+              </h1>
+              <button
+                onClick={handleTranslate}
+                disabled={translating}
+                className="mt-2 shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-brand-soft text-brand-ink hover:bg-brand/20 transition-colors"
+              >
+                <Languages className="w-4 h-4" />
+                {translating ? 'Translating...' : translatedData ? 'Show Original' : 'Translate (HI)'}
+              </button>
+            </div>
 
             {event.summary && (
               <p className="mt-3 text-base leading-relaxed text-ink-soft">{event.summary}</p>
@@ -503,8 +539,12 @@ export default function EventDetails() {
             {/* ----------------------------------------------- description */}
             <section className="mt-8">
               <h2 className="text-display-sm">About this event</h2>
-              <div className="mt-3 space-y-3 text-sm leading-relaxed text-ink-soft sm:text-base">
-                {event.description.split('\n').filter(Boolean).map((paragraph, index) => (
+              <div className="mt-4 mb-2 p-3 bg-surface-sunken rounded-xl ring-1 ring-border flex flex-col gap-2 max-w-sm">
+                <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">🎧 Listen to description</span>
+                <audio controls src={`/api/events/${event.id}/tts`} className="w-full h-8" />
+              </div>
+              <div className="mt-4 space-y-3 text-sm leading-relaxed text-ink-soft sm:text-base">
+                {(translatedData ? translatedData.description : event.description).split('\n').filter(Boolean).map((paragraph, index) => (
                   <p key={index}>{paragraph}</p>
                 ))}
               </div>

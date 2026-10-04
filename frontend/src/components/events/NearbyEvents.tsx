@@ -145,11 +145,11 @@ export function NearbyEvents() {
     <section className="container-page py-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="flex items-center gap-2 text-display-md">
+          <h2 className="flex items-center gap-2 text-display-md text-white">
             <Navigation className="h-6 w-6 text-accent" aria-hidden="true" />
             Happening near you
           </h2>
-          <p className="mt-1.5 text-sm text-ink-soft">
+          <p className="mt-1.5 text-sm text-gray-300">
             The closest events to where you are right now.
           </p>
         </div>

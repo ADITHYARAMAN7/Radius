@@ -3,6 +3,9 @@ import { logger } from '../config/logger';
 import { AppError } from '../middleware/error';
 import type { AuthUser } from '../middleware/auth';
 import { pointsDelta } from './gamificationService';
+import { logRsvpToBigQuery } from './analyticsService';
+import { getEventById } from './eventService';
+import { scheduleEventReminder } from './tasksService';
 
 const EVENTS = 'events';
 const RSVPS = 'rsvps';
@@ -80,6 +83,23 @@ export async function joinEvent(eventId: string, user: AuthUser): Promise<RsvpRe
   });
 
   logger.info('RSVP created', { eventId, uid: user.uid, rsvpCount: result.rsvpCount });
+  
+  // Log to BigQuery for real-time analytics
+  void logRsvpToBigQuery(eventId, user.uid);
+  
+  // Schedule a reminder 15 minutes before the event using Cloud Tasks
+  try {
+    const event = await getEventById(eventId);
+    // Send 15 minutes before the event
+    const sendAt = new Date(new Date(event.startsAt).getTime() - 15 * 60 * 1000);
+    // If it's already within 15 minutes, send in 1 minute
+    const actualSendAt = sendAt.getTime() > Date.now() ? sendAt : new Date(Date.now() + 60 * 1000);
+    
+    void scheduleEventReminder(eventId, user.uid, actualSendAt);
+  } catch (error) {
+    logger.error('Failed to schedule reminder on RSVP', { reason: String(error) });
+  }
+
   return result;
 }
 

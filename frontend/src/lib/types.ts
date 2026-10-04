@@ -6,6 +6,8 @@ export const CATEGORIES = [
   'Community',
   'Education',
   'Technology',
+  'Art',
+  'Health',
   'Other',
 ] as const;
 
@@ -307,6 +309,7 @@ export interface TrendingEvent extends EventRecord {
   pulseStatus: PulseStatus;
   /** 1–3 human-readable reasons explaining the momentum. */
   pulseReasons: string[];
+  recentRsvps?: number;
 }
 
 /** An address suggestion from /api/places/suggest (OpenStreetMap, used without a Google key). */

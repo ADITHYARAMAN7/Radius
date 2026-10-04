@@ -1,7 +1,7 @@
 rules_version = '2';
 
 /**
- * Nearby-Events Firestore security rules.
+ * Radius Firestore security rules.
  *
  * All application writes go through the Cloud Run API, which authenticates with a
  * service account and therefore bypasses these rules entirely. They exist as the second

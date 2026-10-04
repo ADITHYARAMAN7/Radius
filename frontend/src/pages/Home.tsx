@@ -17,54 +17,46 @@ import { CATEGORY_STYLES, cn } from '@/lib/utils';
 
 function Hero() {
   return (
-    <section className="hero-glow relative overflow-hidden border-b border-border">
-      {/* Tightened from py-28: the old spacing left a dead band before the first section. */}
-      <div className="container-page relative py-14 sm:py-16 lg:py-20">
-        <div className="max-w-3xl">
-          <Badge tone="brand" className="animate-fade-up">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-            Built on Google Cloud for the Cognizant NPN Hackathon
-          </Badge>
+    <section className="bg-bg text-ink relative overflow-hidden pb-12 pt-16">
+      <div className="container-page relative flex flex-col items-center text-center">
+        <h1 className="text-display-xl lg:text-[4rem] font-serif font-extrabold tracking-tight">
+          <span className="text-white">Discover What's</span>
+          <br />
+          <span className="bg-gradient-to-r from-brand to-[#D4CE70] bg-clip-text text-transparent">
+            Happening Nearby
+          </span>
+        </h1>
 
-          <h1 className="mt-5 animate-fade-up text-display-xl text-ink [animation-delay:60ms]">
-            Discover What&rsquo;s
-            <br />
-            Happening <span className="text-brand">Around You</span>
-          </h1>
+        {/* Search Bar */}
+        <div className="mt-8 w-full max-w-2xl relative animate-fade-up [animation-delay:60ms]">
+          <input 
+            type="text" 
+            placeholder="Search events, locations, neighborhoods..." 
+            className="w-full bg-surface-raised border border-border rounded-full py-4 pl-6 pr-12 text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/50 transition-shadow"
+          />
+        </div>
 
-          <p className="mt-5 max-w-xl animate-fade-up text-base leading-relaxed text-ink-soft [animation-delay:120ms] sm:text-lg">
-            Find local events, meetups, activities and community experiences near you. Post what you
-            are organising, and see who else is going.
-          </p>
-
-          <div className="mt-7 flex animate-fade-up flex-col gap-3 [animation-delay:180ms] sm:flex-row">
-            <ButtonLink to="/explore" variant="primary" size="lg">
-              Explore Events
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </ButtonLink>
-
-            <ButtonLink to="/events/new" variant="secondary" size="lg">
-              Create Event
-            </ButtonLink>
-          </div>
-
-          <dl className="mt-10 grid max-w-lg animate-fade-up grid-cols-3 gap-6 [animation-delay:240ms]">
-            {[
-              { label: 'City', value: 'Coimbatore', icon: MapPin },
-              { label: 'Categories', value: '8 kinds', icon: Flame },
-              { label: 'Always', value: 'Up to date', icon: CalendarDays },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <dt className="flex items-center gap-1.5 text-xs font-medium text-ink-muted">
-                  <stat.icon className="h-3.5 w-3.5" aria-hidden="true" />
-                  {stat.label}
-                </dt>
-                <dd className="mt-1 font-display text-sm font-bold text-ink sm:text-base">
-                  {stat.value}
-                </dd>
-              </div>
-            ))}
-          </dl>
+        {/* Category Pills */}
+        <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-3xl animate-fade-up [animation-delay:120ms]">
+          <button className="px-4 py-1.5 rounded-full bg-brand/20 text-brand font-medium text-sm transition-colors hover:bg-brand/30 border border-brand/20">
+            All
+          </button>
+          
+          {[
+            { label: 'Sports', color: 'bg-green-500' },
+            { label: 'Music', color: 'bg-purple-500' },
+            { label: 'Food', color: 'bg-orange-500' },
+            { label: 'Yard Sale', color: 'bg-yellow-500' },
+            { label: 'Community', color: 'bg-blue-500' },
+            { label: 'Education', color: 'bg-indigo-500' },
+            { label: 'Technology', color: 'bg-fuchsia-500' },
+            { label: 'Other', color: 'bg-gray-500' }
+          ].map((cat) => (
+            <button key={cat.label} className="px-4 py-1.5 rounded-full bg-surface-raised text-ink-muted hover:text-ink font-medium text-sm transition-colors border border-border flex items-center gap-2 hover:bg-surface-sunken">
+              <span className={`w-2 h-2 rounded-full ${cat.color}`}></span>
+              {cat.label}
+            </button>
+          ))}
         </div>
       </div>
     </section>
@@ -183,11 +175,11 @@ function EventSection({
     <section className="container-page py-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="flex items-center gap-2 text-display-md">
+          <h2 className="flex items-center gap-2 text-display-md text-white">
             {icon}
             {title}
           </h2>
-          <p className="mt-1.5 text-sm text-ink-soft">{description}</p>
+          <p className="mt-1.5 text-sm text-gray-300">{description}</p>
         </div>
 
         <Link
@@ -272,7 +264,7 @@ export default function Home() {
   const [boardHasEvents, setBoardHasEvents] = useState<boolean | null>(null);
 
   useEffect(() => {
-    document.title = 'Nearby-Events — Discover. Connect. Participate.';
+    document.title = 'Radius — Discover. Connect. Participate.';
   }, []);
 
   const onPopularResolved = useCallback((hasEvents: boolean) => setBoardHasEvents(hasEvents), []);
@@ -285,6 +277,24 @@ export default function Home() {
         Placed directly under the hero: "what is near me" is the question the product
         exists to answer, so it should not be below three other sections.
       */}
+      {/* View Toggle */}
+      <div className="container-page py-6">
+        <div className="inline-flex bg-surface-raised p-1.5 rounded-full border border-border shadow-sm">
+          <button className="flex items-center gap-2 px-6 py-2 rounded-full bg-white text-ink font-semibold shadow-sm transition-all">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            List
+          </button>
+          <button className="flex items-center gap-2 px-6 py-2 rounded-full text-ink-muted hover:text-ink hover:bg-surface-sunken transition-all">
+            <MapPin className="w-[1.125rem] h-[1.125rem]" />
+            Map
+          </button>
+          <button className="flex items-center gap-2 px-6 py-2 rounded-full text-ink-muted hover:text-ink hover:bg-surface-sunken transition-all">
+            <CalendarDays className="w-[1.125rem] h-[1.125rem]" />
+            Calendar
+          </button>
+        </div>
+      </div>
+
       <NearbyEvents />
 
       <RecommendedSection />
@@ -332,7 +342,7 @@ export default function Home() {
         </section>
       )}
 
-      <CategoryTiles />
+
 
       <EventSection
         title="Just added"

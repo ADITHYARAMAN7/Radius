@@ -1,4 +1,4 @@
-# Google Cloud architecture — Nearby-Events
+# Google Cloud architecture — Radius
 
 > Written for judges and reviewing engineers: what each Google Cloud service does here,
 > why it was chosen over the alternatives, and how it fails.
@@ -302,7 +302,7 @@ configured at all.
 
 ### Artifact Registry
 
-Stores container images at `REGION-docker.pkg.dev/PROJECT/nearby-events`. Replaces the
+Stores container images at `REGION-docker.pkg.dev/PROJECT/radius`. Replaces the
 deprecated Container Registry.
 
 ### Cloud Build
@@ -350,7 +350,7 @@ deprecated Container Registry.
 
 ## IAM: least privilege
 
-The runtime service account `nearby-events-run@PROJECT.iam.gserviceaccount.com` holds
+The runtime service account `radius-run@PROJECT.iam.gserviceaccount.com` holds
 only what the application actually uses. The default Compute service account is
 deliberately **not** used — it is far broader than required.
 

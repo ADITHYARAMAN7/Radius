@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Nearby-Events — one-time Google Cloud provisioning.
+# Radius — one-time Google Cloud provisioning.
 #
 # Idempotent: every step checks before it creates, so re-running after a failure is
 # safe and will not duplicate anything.
@@ -15,8 +15,8 @@ set -euo pipefail
 
 PROJECT_ID="${PROJECT_ID:-}"
 REGION="${REGION:-asia-south1}"
-SERVICE="${SERVICE:-nearby-events}"
-REPO="${REPO:-nearby-events}"
+SERVICE="${SERVICE:-radius}"
+REPO="${REPO:-radius}"
 BUCKET="${BUCKET:-${PROJECT_ID}-event-images}"
 RUNTIME_SA="${SERVICE}-run"
 
@@ -56,7 +56,7 @@ else
   gcloud artifacts repositories create "$REPO" \
     --repository-format=docker \
     --location="$REGION" \
-    --description="Nearby-objects container images" \
+    --description="Radius container images" \
     --quiet
   ok "repository '$REPO' created"
 fi
@@ -100,7 +100,7 @@ if gcloud iam service-accounts describe "$SA_EMAIL" >/dev/null 2>&1; then
   ok "service account already exists"
 else
   gcloud iam service-accounts create "$RUNTIME_SA" \
-    --display-name="Nearby-objects Cloud Run runtime" \
+    --display-name="Radius Cloud Run runtime" \
     --quiet
   ok "service account created"
 fi

@@ -1,4 +1,4 @@
-# Nearby-Events — Hackathon Presentation Deck (10 Slides)
+# Radius — Hackathon Presentation Deck (10 Slides)
 
 **Cognizant NPN GCP Hackathon · Use Case 5: Local Event Bulletin Board**
 
@@ -8,11 +8,11 @@
 ---
 
 ### Slide 1 — Title
-- **Nearby-Events**: the neighbourhood's event board, built on Google Cloud
+- **Radius**: the neighbourhood's event board, built on Google Cloud
 - Use Case 5 — Local Event Bulletin Board
 - **Team**: Kanish, Adhi, Suhas *(add the remaining team members and mentors)*
 - **Stack**: Cloud Run · Firestore · Firebase Auth · Cloud Storage · Vertex AI (Gemini) · Google Maps Platform · React + TypeScript
-- **Live**: https://nearby-events-x2gneiue7a-el.a.run.app
+- **Live**: https://radius-x2gneiue7a-el.a.run.app
 
 ---
 
@@ -147,4 +147,4 @@
 
 ---
 
-> **Nearby-Events: every local event on one board — always current, easy to post, built on Google Cloud.**
+> **Radius: every local event on one board — always current, easy to post, built on Google Cloud.**

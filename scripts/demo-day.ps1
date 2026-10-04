@@ -1,4 +1,4 @@
-# Nearby-Events — demo-day switch for the live Cloud Run deployment (Windows PowerShell).
+# Radius — demo-day switch for the live Cloud Run deployment (Windows PowerShell).
 #
 #   .\scripts\demo-day.ps1          # morning of the demo: fresh demo events + one warm instance
 #   .\scripts\demo-day.ps1 -Off     # after the demo: back to scale-to-zero (stops the idle cost)
@@ -9,9 +9,9 @@
 
 param(
   [switch]$Off,
-  [string]$Project = 'nearby-events-510418',
+  [string]$Project = 'radius-510418',
   [string]$Region = 'asia-south1',
-  [string]$Service = 'nearby-events'
+  [string]$Service = 'radius'
 )
 
 $ErrorActionPreference = 'Continue'

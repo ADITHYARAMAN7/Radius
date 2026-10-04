@@ -1,4 +1,4 @@
-# Demo script — Nearby-Events
+# Demo script — Radius
 
 > Written for whoever is presenting. About 5–6 minutes if you keep moving, plus questions.
 > Starred steps (⭐) are the ones to keep if you are short of time: 2, 4b, 8, 10, 14.
@@ -33,7 +33,7 @@ the form by hand and move on — nothing breaks, which is itself worth saying ou
 ### 1 · Open on the home page  *(20s)*
 
 > "In Coimbatore, local events live on paper posters and forwarded WhatsApp messages — easy to
-> miss, impossible to search, and never taken down. Nearby-Events puts them on one board."
+> miss, impossible to search, and never taken down. Radius puts them on one board."
 
 Scroll once to show **Happening this week**, **Most popular** (note the amber **🔥 Popular** badges),
 and the category tiles with live counts.
@@ -234,7 +234,7 @@ Open `docs/architecture.md` or the diagram slide.
 
 ### 14 · On a phone  ⭐ *(15s)*
 
-Show the **Nearby-Events** icon on the phone's home screen and open it — it runs full-screen like an app,
+Show the **Radius** icon on the phone's home screen and open it — it runs full-screen like an app,
 no app store needed.
 
 **Close on this:**

@@ -91,7 +91,7 @@ export function EventCard({
         )}
 
         <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
-          <CategoryBadge category={event.category} size="sm" className="bg-surface/95 backdrop-blur" />
+          <CategoryBadge category={event.category} size="sm" />
 
           {live && (
             <Badge tone="success" size="sm" className="bg-surface/95 backdrop-blur">
@@ -120,12 +120,9 @@ export function EventCard({
         */}
         <div className="absolute bottom-3 right-3">
           {isPopular(event) ? (
-            <Badge tone="warning" size="sm" className="bg-warning-soft/95 backdrop-blur">
-              <Flame className="h-3 w-3" aria-hidden="true" />
-              Popular
-              <span aria-hidden="true">·</span>
-              <span className="tabular-nums">{event.rsvpCount}</span>
-              <span className="sr-only">{formatRsvpCount(event.rsvpCount)}</span>
+            <Badge tone="custom" size="sm" className="bg-[#FF453A] text-white">
+              <span className="w-2.5 h-2.5 mr-1 flex items-center justify-center">🔥</span>
+              Trending
             </Badge>
           ) : (
             <Badge tone="neutral" size="sm" className="bg-surface/95 backdrop-blur">

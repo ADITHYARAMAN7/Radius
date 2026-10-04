@@ -6,6 +6,8 @@ import { currentUser, requireAuth, type AuthedRequest } from '../middleware/auth
 import { AppError, asyncHandler } from '../middleware/error';
 import { aiAssistSchema, aiExtractSchema } from '../middleware/validate';
 import { extractEventDetails, generateEventSuggestion, parseSearchIntent } from '../services/aiService';
+import { rankEventsWithAi } from '../services/aiRankingService';
+import { listEvents } from '../services/eventService';
 import { MAX_IMAGE_BYTES, detectImageType } from '../services/storageService';
 import { logger } from '../config/logger';
 
@@ -108,7 +110,19 @@ aiRouter.post(
     }
 
     const intent = await parseSearchIntent(query);
-    res.json({ intent });
+    
+    // Fetch events based on the intent filters (no search keyword filter to get more matches)
+    const eventsResponse = await listEvents({
+      category: intent.category as any,
+      neighborhood: intent.neighborhood || undefined,
+      city: intent.city || undefined,
+      dateFilter: intent.dateFilter as any,
+    }, key);
+    
+    // Rank events with AI
+    const rankedEvents = await rankEventsWithAi(query, eventsResponse.items);
+    
+    res.json({ intent, rankedEvents });
   }),
 );
 

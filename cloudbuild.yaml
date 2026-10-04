@@ -1,5 +1,5 @@
 # =============================================================================
-# Nearby-Events — Cloud Build pipeline
+# Radius — Cloud Build pipeline
 #
 # WHY THIS FILE EXISTS
 # --------------------
@@ -25,7 +25,7 @@
 #
 # USAGE
 #   gcloud builds submit --config cloudbuild.yaml \
-#     --substitutions=_REGION=asia-south1,_SERVICE=nearby-events,\
+#     --substitutions=_REGION=asia-south1,_SERVICE=radius,\
 # _VITE_FIREBASE_API_KEY=...,_VITE_FIREBASE_AUTH_DOMAIN=...,...
 #
 # docs/gcp-deployment.md has the full command with every value filled in.
@@ -33,8 +33,8 @@
 
 substitutions:
   _REGION: asia-south1
-  _SERVICE: nearby-events
-  _REPO: nearby-events
+  _SERVICE: radius
+  _REPO: radius
   _BUCKET: ''
   _AI_PROVIDER: api
   _VERTEX_LOCATION: global  # Flash-Lite models are only served from the global endpoint

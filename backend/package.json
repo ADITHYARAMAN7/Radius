@@ -1,8 +1,8 @@
 {
-  "name": "nearby-objects-api",
+  "name": "radius-api",
   "version": "1.0.0",
   "private": true,
-  "description": "Nearby-objects API — Express + Firestore + Cloud Storage + Gemini, deployed on Cloud Run",
+  "description": "Radius API — Express + Firestore + Cloud Storage + Gemini, deployed on Cloud Run",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -14,6 +14,11 @@
     "verify": "tsx src/scripts/verify.ts"
   },
   "dependencies": {
+    "@google-cloud/bigquery": "^9.1.0",
+    "@google-cloud/tasks": "^7.2.1",
+    "@google-cloud/text-to-speech": "^7.1.1",
+    "@google-cloud/translate": "^10.1.1",
+    "@google-cloud/vision": "^6.1.1",
     "@google/genai": "^1.5.0",
     "compression": "^1.7.4",
     "cors": "^2.8.5",

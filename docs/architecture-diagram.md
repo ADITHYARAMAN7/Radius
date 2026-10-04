@@ -1,7 +1,7 @@
-# Nearby-Events — System Architecture Diagram
+# Radius — System Architecture Diagram
 
-> As deployed on Google Cloud (project `nearby-events-510418`, region `asia-south1`).
-> Live: https://nearby-events-x2gneiue7a-el.a.run.app · Vector version for slides: [`architecture-diagram.svg`](architecture-diagram.svg)
+> As deployed on Google Cloud (project `radius-510418`, region `asia-south1`).
+> Live: https://radius-x2gneiue7a-el.a.run.app · Vector version for slides: [`architecture-diagram.svg`](architecture-diagram.svg)
 
 ---
 
@@ -21,7 +21,7 @@
           ID token  ------------------> | REST /api/*  (Bearer ID token)
                                         v
                         +--------------------------------+        +----------------------+
- Cloud Scheduler ------>|  Cloud Run  "nearby-events"    |------->|  Cloud Logging       |
+ Cloud Scheduler ------>|  Cloud Run  "radius"    |------->|  Cloud Logging       |
  hourly: POST           |  Node 20 + Express, 0-10 inst. |        |  + Monitoring        |
  /api/maintenance/expire|  helmet, Zod, rate limits      |        |  dashboard, uptime,  |
                         +---+------------+------------+--+        |  log metrics, alert  |
@@ -55,7 +55,7 @@ graph TD
         SPA["React 18 + TypeScript SPA<br/>board, map, calendar, post form, Snap-a-Poster"]
     end
 
-    subgraph Run ["Cloud Run: nearby-events (asia-south1)"]
+    subgraph Run ["Cloud Run: radius (asia-south1)"]
         API["Node 20 + Express API<br/>also serves the SPA"]
         MW["ID-token check, Zod validation,<br/>rate limits, helmet"]
         SVC["Services: events, RSVP transactions,<br/>check-in, Q&A, recommendations, uploads, AI"]

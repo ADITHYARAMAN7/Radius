@@ -66,7 +66,7 @@ metaRouter.get(
 
     res.status(healthy ? 200 : 503).json({
       status: healthy ? 'ok' : 'degraded',
-      service: 'nearby-objects-api',
+      service: 'radius-api',
       // Environment tag is useful in staging; omit in production to avoid leaking stack info.
       ...(env.isProduction ? {} : { environment: env.nodeEnv }),
       // Never expose the GCP project ID publicly — it can be used to enumerate resources.

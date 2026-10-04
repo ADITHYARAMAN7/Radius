@@ -54,7 +54,7 @@ export function AuthShell({
         <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-white shadow-sm">
           <MapPin className="h-5 w-5" aria-hidden="true" />
         </span>
-        Nearby-Events
+        Radius
       </Link>
 
       <Card className="mt-8 p-6 sm:p-8">
@@ -115,7 +115,7 @@ export default function Login() {
   const next = safeRedirectPath(searchParams.get('next'));
 
   useEffect(() => {
-    document.title = 'Sign in — Nearby-Events';
+    document.title = 'Sign in — Radius';
   }, []);
 
   if (!configured) return <AuthNotConfigured />;

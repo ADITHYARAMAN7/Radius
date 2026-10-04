@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Nearby-Events",
-  "short_name": "Nearby-Events",
+  "name": "Radius",
+  "short_name": "Radius",
   "description": "Find and post local events, meetups and yard sales in your neighbourhood.",
   "start_url": "/",
   "scope": "/",

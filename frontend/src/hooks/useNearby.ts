@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'nearby-objects:location';
+const STORAGE_KEY = 'radius:location';
 
 /** How long a remembered position stays usable before we ask again. */
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;

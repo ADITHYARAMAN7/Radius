@@ -20,7 +20,7 @@ const configuredProjectId =
   optional('GCP_PROJECT_ID') || optional('FIREBASE_PROJECT_ID') || optional('GOOGLE_CLOUD_PROJECT');
 
 /** The `demo-` prefix tells the Firebase tooling this project never talks to real Google Cloud. */
-const LOCAL_PROJECT_ID = 'demo-nearby-events';
+const LOCAL_PROJECT_ID = 'demo-radius';
 
 /**
  * Local mode: nothing about Google Cloud is configured, so run against the Firebase

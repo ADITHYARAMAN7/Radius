@@ -70,7 +70,7 @@ export const eventInputSchema = z
     tzOffsetMinutes: z.number().int().min(-840).max(840).optional(),
 
     location: trimmed(140).min(3, 'Name the venue or meeting point.'),
-    address: trimmed(300).min(5, 'Add a street address.'),
+    address: trimmed(300).optional().default(''),
     latitude: z.number().min(-90).max(90).nullable().optional(),
     longitude: z.number().min(-180).max(180).nullable().optional(),
     neighborhood: trimmed(100).min(2, 'Add a neighborhood.'),

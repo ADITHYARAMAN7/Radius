@@ -7,6 +7,7 @@ import {
   Trophy,
   UtensilsCrossed,
   Users,
+  Heart,
   type LucideIcon,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Primitives';
@@ -21,6 +22,8 @@ const ICONS: Record<Category, LucideIcon> = {
   Community: Users,
   Education: GraduationCap,
   Technology: Cpu,
+  Art: Sparkles,
+  Health: Heart,
   Other: Sparkles,
 };
 
@@ -38,7 +41,7 @@ export function CategoryIcon({
 export function CategoryBadge({
   category,
   size = 'md',
-  withIcon = true,
+  withIcon = false,
   className,
 }: {
   category: Category;
@@ -49,9 +52,9 @@ export function CategoryBadge({
   const style = CATEGORY_STYLES[category];
 
   return (
-    <Badge tone="custom" size={size} className={cn(style.badge, className)}>
+    <Badge tone="custom" size={size} className={cn(style.badge, 'font-bold tracking-wider uppercase', className)}>
       {withIcon && <CategoryIcon category={category} className="h-3.5 w-3.5" />}
-      {category}
+      {category === 'Technology' ? 'TECH' : category}
     </Badge>
   );
 }

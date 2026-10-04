@@ -130,7 +130,7 @@ async function requestOnce<T>(path: string, options: RequestOptions = {}): Promi
     throw new ApiError(
       0,
       'NETWORK',
-      'We could not reach Nearby-Events. Check your connection and try again.',
+      'We could not reach Radius. Check your connection and try again.',
     );
   }
 
@@ -413,5 +413,25 @@ export const api = {
     if (params.city) query.set('city', params.city);
     const qs = query.toString();
     return request<Paginated<TrendingEvent>>(`/events/trending${qs ? `?${qs}` : ''}`);
+  },
+
+  /**
+   * Natural-language search powered by Gemini.
+   */
+  aiSearch: (query: string) => {
+    return request<{ 
+      intent: {
+        category?: string;
+        neighborhood?: string;
+        dateFilter?: string;
+        keywords?: string;
+        source: string;
+      };
+      rankedEvents?: Array<{ eventId: string; reason: string }>;
+    }>('/ai/search', {
+      method: 'POST',
+      body: { query },
+      auth: true,
+    });
   },
 };

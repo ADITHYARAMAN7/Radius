@@ -68,7 +68,7 @@ export function EventQrCode({ event }: EventQrCodeProps) {
             </div>
 
             <p className="text-xs text-ink-muted mt-3">
-              Scan with any mobile camera to open this event directly on Nearby-Events.
+              Scan with any mobile camera to open this event directly on Radius.
             </p>
 
             <div className="mt-5 flex gap-2 justify-center">

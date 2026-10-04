@@ -21,9 +21,10 @@ const MyRsvps = lazy(() => import('@/pages/MyRsvps'));
 const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));
 const Profile = lazy(() => import('@/pages/Profile'));
-const Insights = lazy(() => import('@/pages/Insights'));
+const Pulse = lazy(() => import('@/pages/Pulse'));
 const Community = lazy(() => import('@/pages/Community'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
+const AskTheBoard = lazy(() => import('@/pages/AskTheBoard'));
 
 function Deferred({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PageSkeleton />}>{children}</Suspense>;
@@ -33,7 +34,7 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<Home />} />
+        <Route index element={<Explore />} />
         <Route path="explore" element={<Explore />} />
 
         {/* The shareable permalink. Public — no account needed to open a shared link. */}
@@ -113,10 +114,21 @@ export default function App() {
         />
 
         <Route
-          path="insights"
+          path="pulse"
           element={
             <Deferred>
-              <Insights />
+              <Pulse />
+            </Deferred>
+          }
+        />
+
+        <Route
+          path="ask"
+          element={
+            <Deferred>
+              <ProtectedRoute>
+                <AskTheBoard />
+              </ProtectedRoute>
             </Deferred>
           }
         />

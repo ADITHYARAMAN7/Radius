@@ -53,7 +53,7 @@ export function initFirebase(): admin.app.App {
       : isEmulator
         ? {}
         : { credential: admin.credential.applicationDefault() }),
-    projectId: env.projectId || 'demo-nearby-events',
+    projectId: env.projectId || 'demo-radius',
     ...(env.gcsBucket ? { storageBucket: env.gcsBucket } : {}),
   });
 
@@ -68,9 +68,12 @@ export function initFirebase(): admin.app.App {
   return app;
 }
 
+import { getFirestore } from 'firebase-admin/firestore';
+
 export function getDb(): admin.firestore.Firestore {
-  initFirebase();
-  return admin.firestore();
+  const currentApp = initFirebase();
+  // The user's database was created as 'default1' instead of '(default)'
+  return getFirestore(currentApp, 'default1');
 }
 
 export function getAuth(): admin.auth.Auth {

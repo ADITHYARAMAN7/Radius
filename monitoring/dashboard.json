@@ -1,5 +1,5 @@
 {
- "displayName": "Nearby-Events - live monitoring",
+ "displayName": "Radius - live monitoring",
  "mosaicLayout": {
   "columns": 12,
   "tiles": [
@@ -12,7 +12,7 @@
      "title": "About",
      "text": {
       "format": "MARKDOWN",
-      "content": "**Nearby-Events (Cloud Run, asia-south1).** Traffic, speed and errors come from Cloud Run. App activity and AI health come from log-based metrics on the API structured logs. The uptime check calls /api/health every 5 minutes and emails on failure."
+      "content": "**Radius (Cloud Run, asia-south1).** Traffic, speed and errors come from Cloud Run. App activity and AI health come from log-based metrics on the API structured logs. The uptime check calls /api/health every 5 minutes and emails on failure."
      }
     }
    },
@@ -28,7 +28,7 @@
        {
         "timeSeriesQuery": {
          "timeSeriesFilter": {
-          "filter": "metric.type=\"run.googleapis.com/request_count\" AND resource.type=\"cloud_run_revision\" AND resource.label.service_name=\"nearby-events\"",
+          "filter": "metric.type=\"run.googleapis.com/request_count\" AND resource.type=\"cloud_run_revision\" AND resource.label.service_name=\"radius\"",
           "aggregation": {
            "alignmentPeriod": "60s",
            "perSeriesAligner": "ALIGN_RATE",
@@ -61,7 +61,7 @@
        {
         "timeSeriesQuery": {
          "timeSeriesFilter": {
-          "filter": "metric.type=\"run.googleapis.com/request_latencies\" AND resource.type=\"cloud_run_revision\" AND resource.label.service_name=\"nearby-events\"",
+          "filter": "metric.type=\"run.googleapis.com/request_latencies\" AND resource.type=\"cloud_run_revision\" AND resource.label.service_name=\"radius\"",
           "aggregation": {
            "alignmentPeriod": "60s",
            "perSeriesAligner": "ALIGN_DELTA",
@@ -76,7 +76,7 @@
        {
         "timeSeriesQuery": {
          "timeSeriesFilter": {
-          "filter": "metric.type=\"run.googleapis.com/request_latencies\" AND resource.type=\"cloud_run_revision\" AND resource.label.service_name=\"nearby-events\"",
+          "filter": "metric.type=\"run.googleapis.com/request_latencies\" AND resource.type=\"cloud_run_revision\" AND resource.label.service_name=\"radius\"",
           "aggregation": {
            "alignmentPeriod": "60s",
            "perSeriesAligner": "ALIGN_DELTA",
@@ -108,7 +108,7 @@
        {
         "timeSeriesQuery": {
          "timeSeriesFilter": {
-          "filter": "metric.type=\"monitoring.googleapis.com/uptime_check/check_passed\" AND resource.type=\"uptime_url\" AND metric.label.check_id=\"nearby-events-health-7yUxI29KmOc\"",
+          "filter": "metric.type=\"monitoring.googleapis.com/uptime_check/check_passed\" AND resource.type=\"uptime_url\" AND metric.label.check_id=\"radius-health-7yUxI29KmOc\"",
           "aggregation": {
            "alignmentPeriod": "300s",
            "perSeriesAligner": "ALIGN_FRACTION_TRUE",
@@ -135,7 +135,7 @@
        {
         "timeSeriesQuery": {
          "timeSeriesFilter": {
-          "filter": "metric.type=\"run.googleapis.com/container/instance_count\" AND resource.type=\"cloud_run_revision\" AND resource.label.service_name=\"nearby-events\"",
+          "filter": "metric.type=\"run.googleapis.com/container/instance_count\" AND resource.type=\"cloud_run_revision\" AND resource.label.service_name=\"radius\"",
           "aggregation": {
            "alignmentPeriod": "60s",
            "perSeriesAligner": "ALIGN_MAX",
@@ -280,7 +280,7 @@
        {
         "timeSeriesQuery": {
          "timeSeriesFilter": {
-          "filter": "metric.type=\"run.googleapis.com/request_count\" AND resource.type=\"cloud_run_revision\" AND resource.label.service_name=\"nearby-events\" AND metric.label.response_code_class=\"5xx\"",
+          "filter": "metric.type=\"run.googleapis.com/request_count\" AND resource.type=\"cloud_run_revision\" AND resource.label.service_name=\"radius\" AND metric.label.response_code_class=\"5xx\"",
           "aggregation": {
            "alignmentPeriod": "3600s",
            "perSeriesAligner": "ALIGN_SUM",

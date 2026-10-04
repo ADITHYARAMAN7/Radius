@@ -1,4 +1,4 @@
-# Architecture — Nearby-Events
+# Architecture — Radius
 
 > Written for engineers and judges who want to know how this is put together and why
 > each decision went the way it did.

@@ -19,7 +19,7 @@ function emit(severity: Severity, message: string, meta?: Record<string, unknown
   const entry: Record<string, unknown> = {
     severity,
     message,
-    service: 'nearby-objects-api',
+    service: 'radius-api',
     ...meta,
   };
 

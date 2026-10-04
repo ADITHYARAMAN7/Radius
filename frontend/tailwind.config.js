@@ -48,6 +48,7 @@ export default {
       fontFamily: {
         display: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        serif: ['"Playfair Display"', 'Georgia', 'serif'],
       },
       fontSize: {
         // A tighter scale than the default — display sizes get negative tracking so

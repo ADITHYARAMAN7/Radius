@@ -1,4 +1,4 @@
-# Deploying Nearby-Events to Google Cloud
+# Deploying Radius to Google Cloud
 
 > A runbook. Every command is copy-pasteable; set the variables in step 0 and the rest
 > follow. Allow about 30 minutes end to end, most of it waiting for API enablement and
@@ -19,10 +19,10 @@
 Set these once in the shell you will use throughout.
 
 ```bash
-export PROJECT_ID="nearby-events-$(date +%s | tail -c 5)"   # must be globally unique
+export PROJECT_ID="radius-$(date +%s | tail -c 5)"   # must be globally unique
 export REGION="asia-south1"                                   # Mumbai; use your nearest
-export SERVICE="nearby-events"
-export REPO="nearby-events"
+export SERVICE="radius"
+export REPO="radius"
 export BUCKET="${PROJECT_ID}-event-images"
 
 echo "Project: $PROJECT_ID   Region: $REGION"
@@ -40,7 +40,7 @@ echo "Project: $PROJECT_ID   Region: $REGION"
 gcloud auth login
 
 # New project:
-gcloud projects create "$PROJECT_ID" --name="Nearby-Events"
+gcloud projects create "$PROJECT_ID" --name="Radius"
 
 # Or use an existing one:
 # export PROJECT_ID=your-existing-project
@@ -93,7 +93,7 @@ gcloud storage buckets add-iam-policy-binding "gs://$BUCKET" \
   --member=allUsers --role=roles/storage.objectViewer
 
 gcloud iam service-accounts create "${SERVICE}-run" \
-  --display-name="Nearby-Events Cloud Run runtime"
+  --display-name="Radius Cloud Run runtime"
 
 for ROLE in roles/datastore.user roles/storage.objectAdmin \
             roles/secretmanager.secretAccessor roles/logging.logWriter \
