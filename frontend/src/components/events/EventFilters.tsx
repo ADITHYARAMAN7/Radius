@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Mic, Loader2 } from 'lucide-react';
 import { CategoryIcon } from './CategoryBadge';
 import {
   CATEGORIES,
@@ -39,11 +39,66 @@ export function EventFilters({
   onChange,
 }: EventFiltersProps) {
   const searchRef = useRef<HTMLInputElement>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
 
   // The categories to display, exactly as in the screenshot
   const displayCategories = [
     'Art', 'Community', 'Education', 'Food', 'Health', 'Music', 'Other', 'Sports', 'Tech', 'Yard Sale'
   ];
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        setIsTranscribing(true);
+        try {
+          const res = await api.transcribeAudio(audioBlob);
+          if (res.text) {
+            onChange({ search: res.text });
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setIsTranscribing(false);
+        }
+        
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (e) {
+      console.error('Error accessing microphone', e);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
 
   return (
     <div className="w-full max-w-[1200px] mx-auto space-y-6 px-2">
@@ -54,18 +109,42 @@ export function EventFilters({
           type="search"
           value={filters.search}
           onChange={(e) => onChange({ search: e.target.value })}
-          placeholder="Search events, locations, neighborhoods..."
-          className="h-14 w-full rounded-full bg-surface pl-6 pr-12 text-[15px] text-ink ring-1 ring-inset ring-border placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-brand/50 transition-colors [&::-webkit-search-cancel-button]:hidden"
+          placeholder={isRecording ? "Listening..." : isTranscribing ? "Transcribing..." : "Search events, locations, neighborhoods..."}
+          className={cn(
+            "h-14 w-full rounded-full bg-surface pl-6 pr-24 text-[15px] text-ink ring-1 ring-inset ring-border placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-brand/50 transition-colors [&::-webkit-search-cancel-button]:hidden",
+            isRecording && "ring-brand/50 bg-brand/5 text-brand placeholder:text-brand"
+          )}
+          disabled={isRecording || isTranscribing}
         />
-        {filters.search && (
-          <button
-            type="button"
-            onClick={() => onChange({ search: '' })}
-            className="absolute right-5 top-1/2 -translate-y-1/2 p-1 text-ink-muted hover:text-ink transition-colors"
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
-        )}
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          {filters.search && !isRecording && !isTranscribing && (
+            <button
+              type="button"
+              onClick={() => onChange({ search: '' })}
+              className="p-1.5 text-ink-muted hover:text-ink transition-colors rounded-full"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
+          {isTranscribing ? (
+            <div className="p-1.5 text-brand">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={toggleRecording}
+              className={cn(
+                "p-1.5 transition-colors rounded-full",
+                isRecording 
+                  ? "bg-brand text-white animate-pulse" 
+                  : "text-ink-muted hover:text-ink hover:bg-surface-raised"
+              )}
+            >
+              <Mic className="h-5 w-5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Category Chips */}

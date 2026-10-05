@@ -5,7 +5,7 @@ import { capabilities } from '../config/env';
 import { currentUser, requireAuth, type AuthedRequest } from '../middleware/auth';
 import { AppError, asyncHandler } from '../middleware/error';
 import { aiAssistSchema, aiExtractSchema } from '../middleware/validate';
-import { extractEventDetails, generateEventSuggestion, parseSearchIntent, generateEventImage } from '../services/aiService';
+import { extractEventDetails, generateEventSuggestion, parseSearchIntent, generateEventImage, transcribeAudio } from '../services/aiService';
 import { rankEventsWithAi } from '../services/aiRankingService';
 import { listEvents } from '../services/eventService';
 import { MAX_IMAGE_BYTES, detectImageType, uploadEventImage } from '../services/storageService';
@@ -233,5 +233,29 @@ aiRouter.post(
     );
 
     res.json({ imageUrl: uploadResult.imageUrl, imagePath: uploadResult.imagePath });
+  }),
+);
+
+const audioUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit for audio
+});
+
+/**
+ * POST /api/ai/speech-to-text
+ * Transcribes audio from the frontend into text for the search bar.
+ */
+aiRouter.post(
+  '/speech-to-text',
+  requireAuth,
+  audioUpload.single('audio'),
+  asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.file) {
+      throw AppError.badRequest('No audio file provided.');
+    }
+
+    // Pass the buffer and mime type to our transcribe function
+    const text = await transcribeAudio(req.file.buffer, req.file.mimetype);
+    res.json({ text });
   }),
 );

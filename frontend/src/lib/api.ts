@@ -438,4 +438,14 @@ export const api = {
       auth: true,
     });
   },
+
+  transcribeAudio: (audioBlob: Blob) => {
+    const form = new FormData();
+    form.append('audio', audioBlob, 'audio.webm');
+    return request<{ text: string }>('/ai/speech-to-text', {
+      method: 'POST',
+      formData: form,
+      auth: true,
+    });
+  },
 };

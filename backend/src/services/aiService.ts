@@ -646,6 +646,31 @@ export async function extractEventDetails(input: ExtractInput): Promise<Extracti
   }
 }
 
+export async function transcribeAudio(audioBuffer: Buffer, mimeType: string): Promise<string> {
+  getClient();
+  try {
+    const { response } = await generateWithFallback('audio transcription', {
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: 'Transcribe this voice search query exactly as spoken, without any additional formatting or conversational filler.' },
+            { inlineData: { mimeType, data: audioBuffer.toString('base64') } },
+          ],
+        },
+      ],
+      config: {
+        temperature: 0,
+      },
+    });
+    
+    return (response.text || '').trim();
+  } catch (error) {
+    logger.error('Audio transcription failed', { error });
+    throw AppError.unavailable('Could not transcribe audio at this time.');
+  }
+}
+
 /**
  * Moderates event content before publishing.
  * Returns true if the content is safe and complies with community guidelines.
