@@ -224,7 +224,7 @@ aiRouter.post(
 
     const generatedBuffer = await generateEventImage(title, description || '');
     if (!generatedBuffer) {
-      throw AppError.internal('Failed to generate image. Please try again.');
+      throw AppError.unavailable('Failed to generate image. Please try again.');
     }
 
     const uploadResult = await uploadEventImage(

@@ -544,7 +544,7 @@ export function EventForm({
   const [pendingSnap, setPendingSnap] = useState<{ result: ExtractionResult; conflicts: ExtractField[] } | null>(
     null,
   );
-  const [generatingPoster, setGeneratingPoster] = useState(false);
+
 
   /**
    * Google Places autocomplete for the address when a Maps key is configured. If the
@@ -637,24 +637,6 @@ export function EventForm({
     setPendingSnap(null);
     setErrors({});
     setSubmitError(null);
-  };
-
-  const handleGeneratePoster = async () => {
-    if (!form.title) {
-      toast.error('Title missing', 'Please enter a title to generate a poster.');
-      return;
-    }
-    setGeneratingPoster(true);
-    try {
-      const res = await api.generatePoster(form.title, form.description);
-      setForm((current) => ({ ...current, imageUrl: res.imageUrl, imagePath: res.imagePath }));
-      toast.success('Poster generated', 'Your AI poster is ready!');
-    } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Failed to generate poster.';
-      toast.error('Generation failed', msg);
-    } finally {
-      setGeneratingPoster(false);
-    }
   };
 
   const handleExtracted = (result: ExtractionResult) => {
@@ -861,22 +843,6 @@ export function EventForm({
             onChange={(next) =>
               setForm((current) => ({ ...current, imageUrl: next.imageUrl, imagePath: next.imagePath }))
             }
-          />
-          {!form.imageUrl && aiAvailable && (
-            <div className="flex justify-end">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleGeneratePoster}
-                loading={generatingPoster}
-                disabled={!form.title}
-                title={!form.title ? 'Please enter an event title first' : 'Generate an AI poster based on your title and description'}
-              >
-                <Sparkles className="h-4 w-4 text-brand" />
-                Generate with AI
-              </Button>
-            </div>
-          )}
         </div>
 
         {/* Title */}

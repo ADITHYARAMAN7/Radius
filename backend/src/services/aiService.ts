@@ -707,7 +707,10 @@ Respond with a JSON object containing a single boolean field "isSafe".
 export async function generateEventImage(title: string, description: string): Promise<Buffer | null> {
   if (!capabilities.ai) return null;
 
-  const ai = getClient();
+  // Imagen 3 is only available in us-central1, not global.
+  const ai = env.aiProvider === 'vertex'
+    ? new GoogleGenAI({ vertexai: true, project: env.projectId, location: 'us-central1' })
+    : getClient();
 
   try {
     const response = await ai.models.generateImages({
