@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, X, Mic, Loader2 } from 'lucide-react';
 import { CategoryIcon } from './CategoryBadge';
 import {
@@ -38,6 +39,7 @@ export function EventFilters({
   filters,
   onChange,
 }: EventFiltersProps) {
+  const navigate = useNavigate();
   const searchRef = useRef<HTMLInputElement>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -66,7 +68,7 @@ export function EventFilters({
         try {
           const res = await api.transcribeAudio(audioBlob);
           if (res.text) {
-            onChange({ search: res.text });
+            navigate('/ask?q=' + encodeURIComponent(res.text));
           }
         } catch (e) {
           console.error(e);

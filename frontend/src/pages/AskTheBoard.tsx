@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Send, Search, Clock, Users, Monitor, Utensils, Music, Mic, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -6,11 +7,14 @@ import { EventCard } from '@/components/events/EventCard';
 import type { EventRecord } from '@/lib/types';
 
 export default function AskTheBoard() {
-  const [query, setQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get('q') || '');
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<{ events: EventRecord[]; intent: any; reasons?: Record<string, string> } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  
+  const hasAutoSearched = useRef(false);
   
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -77,15 +81,14 @@ export default function AskTheBoard() {
     document.title = 'Ask the Board — Radius';
   }, []);
 
-  const handleAsk = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+  const executeSearch = useCallback(async (searchQuery: string) => {
+    if (!searchQuery.trim()) return;
     setSearching(true);
     setError(null);
     setResults(null);
     
     try {
-      const aiResponse = await api.aiSearch(query);
+      const aiResponse = await api.aiSearch(searchQuery);
       const intent = aiResponse.intent;
       
       const eventsResponse = await api.listEventsAs({
@@ -99,15 +102,12 @@ export default function AskTheBoard() {
       let aiReasons: Record<string, string> = {};
       
       if (aiResponse.rankedEvents && aiResponse.rankedEvents.length > 0) {
-        // Map reasons
         aiResponse.rankedEvents.forEach(r => { aiReasons[r.eventId] = r.reason; });
-        // Filter and sort events based on the AI ranking
         const rankedIds = aiResponse.rankedEvents.map(r => r.eventId);
         finalEvents = eventsResponse.items
           .filter(e => rankedIds.includes(e.id))
           .sort((a, b) => rankedIds.indexOf(a.id) - rankedIds.indexOf(b.id));
       } else {
-        // Fallback to strict keyword matching on frontend
         const search = intent.keywords?.toLowerCase() || '';
         if (search) {
           finalEvents = finalEvents.filter(e => 
@@ -129,6 +129,19 @@ export default function AskTheBoard() {
     } finally {
       setSearching(false);
     }
+  }, [user]);
+
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q && !hasAutoSearched.current) {
+      hasAutoSearched.current = true;
+      executeSearch(q);
+    }
+  }, [searchParams, executeSearch]);
+
+  const handleAsk = async (e: React.FormEvent) => {
+    e.preventDefault();
+    executeSearch(query);
   };
 
   return (
