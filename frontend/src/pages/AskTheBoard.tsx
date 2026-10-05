@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Send, Search, Clock, Users, Monitor, Utensils, Music } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Send, Search, Clock, Users, Monitor, Utensils, Music, Mic, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { EventCard } from '@/components/events/EventCard';
@@ -11,6 +11,67 @@ export default function AskTheBoard() {
   const [results, setResults] = useState<{ events: EventRecord[]; intent: any; reasons?: Record<string, string> } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        setIsTranscribing(true);
+        try {
+          const res = await api.transcribeAudio(audioBlob);
+          if (res.text) {
+            setQuery(res.text);
+            // Optionally auto-submit: 
+            // We can't directly trigger form submission easily here without a ref to the form
+            // but setting the query is good enough, they can just click Ask.
+          }
+        } catch (e: any) {
+          console.error(e);
+          setError(e.message || 'Failed to transcribe audio.');
+        } finally {
+          setIsTranscribing(false);
+        }
+        
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setError(null);
+    } catch (e) {
+      console.error('Error accessing microphone', e);
+      setError('Could not access microphone.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
 
   useEffect(() => {
     document.title = 'Ask the Board — Radius';
@@ -90,22 +151,45 @@ export default function AskTheBoard() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="any yoga ?"
-            className="w-full bg-surface-raised border border-border rounded-full py-4 pl-6 pr-32 text-white shadow-lg focus:outline-none focus:border-brand/50 transition-colors text-lg"
-            disabled={searching}
+            placeholder={isRecording ? "Listening..." : isTranscribing ? "Transcribing..." : "any yoga ?"}
+            className={`w-full bg-surface-raised border border-border rounded-full py-4 pl-6 pr-44 text-white shadow-lg focus:outline-none focus:border-brand/50 transition-colors text-lg ${isRecording ? 'border-brand/50 bg-brand/5' : ''}`}
+            disabled={searching || isRecording || isTranscribing}
           />
-          <button
-            type="submit"
-            disabled={searching || !query.trim()}
-            className="absolute right-2 top-2 bottom-2 px-6 flex items-center justify-center gap-2 rounded-full bg-brand text-brand-ink font-semibold shadow hover:bg-brand-hover transition-colors disabled:opacity-50"
-          >
-            {searching ? (
-              <span className="w-4 h-4 border-2 border-brand-ink/30 border-t-brand-ink rounded-full animate-spin" />
+          
+          <div className="absolute right-2 top-2 bottom-2 flex items-center gap-2">
+            {isTranscribing ? (
+              <div className="p-3 text-brand">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
             ) : (
-              <Send className="w-4 h-4" />
+              <button
+                type="button"
+                onClick={toggleRecording}
+                disabled={searching}
+                className={`p-3 rounded-full transition-colors flex items-center justify-center ${
+                  isRecording 
+                    ? "bg-brand text-white animate-pulse" 
+                    : "text-ink-muted hover:text-ink hover:bg-surface-sunken"
+                }`}
+                title="Search by voice"
+              >
+                <Mic className="h-5 w-5" />
+              </button>
             )}
-            Ask
-          </button>
+
+            <button
+              type="submit"
+              disabled={searching || !query.trim()}
+              className="px-6 h-full flex items-center justify-center gap-2 rounded-full bg-brand text-brand-ink font-semibold shadow hover:bg-brand-hover transition-colors disabled:opacity-50"
+            >
+              {searching ? (
+                <span className="w-4 h-4 border-2 border-brand-ink/30 border-t-brand-ink rounded-full animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              Ask
+            </button>
+          </div>
         </form>
 
         {!results && (
