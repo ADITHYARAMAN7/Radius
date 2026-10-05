@@ -297,6 +297,13 @@ export const api = {
 
   aiStatus: () => request<{ available: boolean; provider?: AiProvider }>('/ai/status'),
 
+  generatePoster: (title: string, description: string) =>
+    request<{ imageUrl: string; imagePath: string }>('/ai/generate-poster', {
+      method: 'POST',
+      body: { title, description },
+      auth: true,
+    }),
+
   aiAssist: (input: {
     title: string;
     description: string;

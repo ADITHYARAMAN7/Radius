@@ -5,10 +5,10 @@ import { capabilities } from '../config/env';
 import { currentUser, requireAuth, type AuthedRequest } from '../middleware/auth';
 import { AppError, asyncHandler } from '../middleware/error';
 import { aiAssistSchema, aiExtractSchema } from '../middleware/validate';
-import { extractEventDetails, generateEventSuggestion, parseSearchIntent } from '../services/aiService';
+import { extractEventDetails, generateEventSuggestion, parseSearchIntent, generateEventImage } from '../services/aiService';
 import { rankEventsWithAi } from '../services/aiRankingService';
 import { listEvents } from '../services/eventService';
-import { MAX_IMAGE_BYTES, detectImageType } from '../services/storageService';
+import { MAX_IMAGE_BYTES, detectImageType, uploadEventImage } from '../services/storageService';
 import { logger } from '../config/logger';
 
 export const aiRouter = Router();
@@ -205,5 +205,33 @@ aiRouter.post(
 
     const result = await extractEventDetails({ image, text: input.text, timezone: input.timezone });
     res.json({ result });
+  }),
+);
+
+/**
+ * POST /api/ai/generate-poster
+ * Explicitly requests AI image generation for an event based on title and description.
+ */
+aiRouter.post(
+  '/generate-poster',
+  requireAuth,
+  extractGate,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const { title, description } = req.body;
+    if (!title) {
+      throw AppError.badRequest('Title is required to generate a poster.');
+    }
+
+    const generatedBuffer = await generateEventImage(title, description || '');
+    if (!generatedBuffer) {
+      throw AppError.internal('Failed to generate image. Please try again.');
+    }
+
+    const uploadResult = await uploadEventImage(
+      { buffer: generatedBuffer, mimetype: 'image/jpeg', size: generatedBuffer.length, originalname: 'generated.jpg' },
+      currentUser(req).uid
+    );
+
+    res.json({ imageUrl: uploadResult.imageUrl, imagePath: uploadResult.imagePath });
   }),
 );

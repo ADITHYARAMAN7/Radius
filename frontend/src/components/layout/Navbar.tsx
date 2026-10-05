@@ -142,7 +142,7 @@ export function Navbar({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onTo
               )}
             </Button>
 
-            <ButtonLink to="/events/new" variant="primary" size="sm" className="hidden sm:inline-flex rounded-full px-5 bg-brand hover:bg-brand-hover text-white border-0">
+            <ButtonLink to="/events/new" variant="primary" size="sm" className="hidden sm:inline-flex rounded-full px-5 btn-liquid-glass border-0">
               <CalendarPlus className="h-4 w-4" aria-hidden="true" />
               Post Event
             </ButtonLink>

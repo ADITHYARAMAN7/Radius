@@ -239,3 +239,37 @@
 [data-theme='dark'] .nearby-map .leaflet-control-attribution a {
   color: hsl(var(--brand));
 }
+
+@layer utilities {
+  .btn-liquid-glass {
+    @apply relative overflow-hidden bg-brand/30 dark:bg-brand/20 backdrop-blur-md border border-white/40 dark:border-white/20 shadow-[0_4px_30px_rgba(0,0,0,0.1)] text-white font-semibold transition-all duration-300;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.1), 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .btn-liquid-glass:hover {
+    @apply bg-brand/40 dark:bg-brand/30 scale-[1.02];
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(0, 0, 0, 0.1), 0 6px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .btn-liquid-glass::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.3) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    transform: skewX(-25deg);
+    transition: all 0.7s ease;
+  }
+
+  .btn-liquid-glass:hover::before {
+    left: 200%;
+  }
+}
+
