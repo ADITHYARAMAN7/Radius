@@ -843,6 +843,7 @@ export function EventForm({
             onChange={(next) =>
               setForm((current) => ({ ...current, imageUrl: next.imageUrl, imagePath: next.imagePath }))
             }
+          />
         </div>
 
         {/* Title */}

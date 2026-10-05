@@ -312,9 +312,6 @@ export const api = {
     neighborhood?: string;
   }) => request<{ suggestion: AiSuggestion }>('/ai/assist', { method: 'POST', body: input, auth: true }),
 
-  aiSearch: (query: string) =>
-    request<{ intent: SearchIntent }>('/ai/search', { method: 'POST', body: { query }, auth: true }),
-
   /** Snap-a-Poster: a poster photo and/or pasted message in, form values out. */
   aiExtract: (input: { image?: Blob; text?: string; timezone: string }) => {
     const form = new FormData();
