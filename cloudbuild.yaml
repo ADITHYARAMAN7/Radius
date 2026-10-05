@@ -36,7 +36,7 @@ substitutions:
   _SERVICE: radius
   _REPO: radius
   _BUCKET: ''
-  _AI_PROVIDER: api
+  _AI_PROVIDER: vertex
   _VERTEX_LOCATION: global  # Flash-Lite models are only served from the global endpoint
 
   # Public web config, inlined into the bundle at build time.
