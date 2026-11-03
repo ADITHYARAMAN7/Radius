@@ -9,8 +9,6 @@
 [![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**🌐 Live on Google Cloud Run:** https://radius-x2gneiue7a-el.a.run.app
-
 ---
 
 ## 📌 Overview
